@@ -1,0 +1,337 @@
+/* -*-c++-*- osgModeling - Copyright (C) 2008 Wang Rui <wangray84@gmail.com>
+*
+* This library is free software; you can redistribute it and/or
+* modify it under the terms of the GNU Lesser General Public
+* License as published by the Free Software Foundation; either
+* version 2.1 of the License, or (at your option) any later version.
+
+* This library is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+* Lesser General Public License for more details.
+
+* You should have received a copy of the GNU Lesser General Public
+* License along with this library; if not, write to the Free Software
+* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+*/
+
+#include <iostream>
+#include <algorithm>
+#include <osg/TriangleFunctor>
+#include <osgModeling/Utilities>
+#include <osgModeling/Model>
+#include <osgModeling/ModelVisitor>
+#include <osgModeling/PolyMesh>
+#include <osgModeling/BspTree>
+
+using namespace osgModeling;
+
+struct LessPtr
+{
+    inline bool operator() ( const osg::Vec3* lhs, const osg::Vec3* rhs ) const
+    {
+        return *lhs < *rhs;
+    }
+};
+
+struct FindEdgePtr 
+{
+    PolyMesh::Vertex* _v[2];
+
+    FindEdgePtr( PolyMesh::Vertex* v1, PolyMesh::Vertex* v2 )
+    { _v[0]=v1; _v[1]=v2; }
+
+    inline bool operator() ( const PolyMesh::Edge* edge )
+    {
+        if ( (_v[0]==edge->_v[0] && _v[1]==edge->_v[1])
+            || (_v[0]==edge->_v[1] && _v[1]==edge->_v[0]) )
+            return true;
+        return false;
+    }
+};
+
+struct CalcTriangleFunctor
+{
+    typedef std::multiset<const osg::Vec3*, LessPtr> CoordinateSet;
+
+    ModelVisitor::GeometryTask _task;
+    unsigned int _coordSize;
+    CoordinateSet _coordSet;
+    osg::Vec3* _coordBase;
+
+    // Normal calculating variables & functions.
+    osg::Vec3* _normalBase;
+
+    void setNormalPtr( osg::Vec3* nb )
+    {
+        _normalBase = nb;
+    }
+
+    inline void incNormal( const osg::Vec3& vec, const osg::Vec3& normal )
+    {
+        std::pair<CoordinateSet::iterator, CoordinateSet::iterator> p =
+            _coordSet.equal_range( &vec );
+
+        for ( CoordinateSet::iterator itr=p.first; itr!=p.second; ++itr )
+        {
+            osg::Vec3* nptr = _normalBase + (*itr - _coordBase);
+            *nptr += normal;
+        }
+    }
+
+    // Polymesh building variables & functions.
+    PolyMesh::VertexList* _meshVertices;
+    PolyMesh::EdgeList* _meshEdges;
+    PolyMesh::FaceList* _meshFaces;
+    PolyMesh::VertexList _meshVecRecorder;
+
+    void setMeshPtr( PolyMesh::VertexList* vl, PolyMesh::EdgeList* el, PolyMesh::FaceList* fl )
+    {
+        _meshVertices = vl;
+        _meshEdges = el;
+        _meshFaces = fl;
+        _meshVecRecorder.resize( _coordSize, NULL );
+    }
+
+    inline PolyMesh::Vertex* buildMeshVertices( const osg::Vec3& vec, PolyMesh::Face* face )
+    {
+        unsigned int pos = &vec - _coordBase;
+        PolyMesh::Vertex* vertex = _meshVecRecorder[pos];
+        if ( !vertex )
+        {
+            vertex = new PolyMesh::Vertex( pos, &vec );
+            _meshVertices->push_back( vertex );
+            _meshVecRecorder[pos] = vertex;
+        }
+
+        vertex->hasFace( face, true );
+        face->hasVertex( vertex, true );
+        return vertex;
+    }
+
+    inline PolyMesh::Edge* buildMeshEdges( PolyMesh::Vertex* v1, PolyMesh::Vertex* v2, PolyMesh::Face* face )
+    {
+        PolyMesh::EdgeList::iterator itr =
+            std::find_if( _meshEdges->begin(), _meshEdges->end(), FindEdgePtr(v1,v2) );
+
+        PolyMesh::Edge* edge;
+        if ( itr==_meshEdges->end() )
+        {
+            edge = new PolyMesh::Edge( v1, v2 );
+            _meshEdges->push_back( edge );
+        }
+        else edge = *itr;
+
+        v1->hasEdge( edge, true );
+        v2->hasEdge( edge, true );
+        edge->hasFace( face, true );
+        return edge;
+    }
+
+    // BSP faces building variables & functions.
+    BspTree* _bspTree;
+
+    void setBspPtr( BspTree* bsp )
+    {
+        _bspTree = bsp;
+    }
+
+    // General functions.
+    CalcTriangleFunctor():
+        _coordSize(0), _coordBase(0)
+    {}
+
+    void setTask( ModelVisitor::GeometryTask t ) { _task=t; }
+
+    void setVerticsPtr( osg::Vec3* cb, unsigned int cs )
+    {
+        _coordSize = cs;
+        _coordBase = cb;
+
+        osg::Vec3* vptr = cb;
+        for ( unsigned int i=0; i<cs; ++i )
+            _coordSet.insert( vptr++ );
+    }
+
+    inline void operator() ( const osg::Vec3& v1, const osg::Vec3& v2, const osg::Vec3& v3, bool treatVertexDataAsTemporary )
+    {
+        if ( treatVertexDataAsTemporary )
+            return;
+        
+        if ( _task==ModelVisitor::CREATE_NORMALS || _task==ModelVisitor::CREATE_FLIP_NORMALS )
+        {
+            int flip = (_task==ModelVisitor::CREATE_FLIP_NORMALS)?-1:1;
+            osg::Vec3 normal = (v2-v1)^(v3-v1) * flip;
+            incNormal( v1, normal );
+            incNormal( v2, normal );
+            incNormal( v3, normal );
+        }
+        else if ( _task==ModelVisitor::BUILD_MESH )
+        {
+            PolyMesh::Face* face = new PolyMesh::Face;
+            _meshFaces->push_back( face );
+            PolyMesh::Vertex* pv1 = buildMeshVertices( v1, face );
+            PolyMesh::Vertex* pv2 = buildMeshVertices( v2, face );
+            PolyMesh::Vertex* pv3 = buildMeshVertices( v3, face );
+            buildMeshEdges( pv1, pv2, face );
+            buildMeshEdges( pv2, pv3, face );
+            buildMeshEdges( pv1, pv3, face );
+        }
+        else if ( _task==ModelVisitor::BUILD_BSP )
+        {
+            BspTree::BspFace face;
+            face.addPoint( v1 );
+            face.addPoint( v2 );
+            face.addPoint( v3 );
+
+            bool hasNormal;
+            calcNormal( v1, v2, v3, &hasNormal );
+
+            if ( face.valid() && hasNormal )
+                _bspTree->addFace( face );
+        }
+    }
+};
+
+ModelVisitor::ModelVisitor()
+{
+    setTraversalMode( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN );
+}
+
+ModelVisitor::~ModelVisitor()
+{
+}
+
+bool ModelVisitor::checkPrimitives( osg::Geometry& geom )
+{
+    osg::Geometry::PrimitiveSetList& primitives = geom.getPrimitiveSetList();
+    osg::Geometry::PrimitiveSetList::iterator itr;
+    unsigned int numSurfacePrimitives=0;
+    for ( itr=primitives.begin(); itr!=primitives.end(); ++itr )
+    {
+        switch ( (*itr)->getMode() )
+        {
+        case (osg::PrimitiveSet::TRIANGLES):
+        case (osg::PrimitiveSet::TRIANGLE_STRIP):
+        case (osg::PrimitiveSet::TRIANGLE_FAN):
+        case (osg::PrimitiveSet::QUADS):
+        case (osg::PrimitiveSet::QUAD_STRIP):
+        case (osg::PrimitiveSet::POLYGON):
+            ++numSurfacePrimitives;
+            break;
+        default:
+            break;
+        }
+    }
+
+    if ( !numSurfacePrimitives ) return false;
+    return true;
+}
+
+void ModelVisitor::buildNormal( osg::Geometry& geom, bool flip )
+{
+    if ( !checkPrimitives(geom) ) return;
+
+    osg::Vec3Array *coords = dynamic_cast<osg::Vec3Array*>( geom.getVertexArray() );
+    if ( !coords || !coords->size() ) return;
+
+    osg::Vec3Array::iterator nitr;
+    osg::Vec3Array *normals = new osg::Vec3Array( coords->size() );
+    for ( nitr=normals->begin(); nitr!=normals->end(); ++nitr )
+    {
+        nitr->set( 0.0f, 0.0f, 0.0f );
+    }
+
+    osg::TriangleFunctor<CalcTriangleFunctor> ctf;
+    ctf.setTask( flip?CREATE_FLIP_NORMALS:CREATE_NORMALS );
+    ctf.setVerticsPtr( &(coords->front()), coords->size() );
+    ctf.setNormalPtr( &(normals->front()) );
+    geom.accept( ctf );
+
+    for ( nitr=normals->begin(); nitr!=normals->end(); ++nitr )
+    {
+        nitr->normalize();
+    }
+
+    geom.setNormalArray( normals );
+    geom.setNormalIndices( geom.getVertexIndices() );
+    geom.setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
+}
+
+void ModelVisitor::buildBSP( Model& model )
+{
+    if ( !checkPrimitives(model) ) return;
+
+    BspTree* bsp = model.getBspTree();
+    osg::Vec3Array *coords = dynamic_cast<osg::Vec3Array*>( model.getVertexArray() );
+    if ( !bsp || !coords || !coords->size() ) return;
+
+    osg::TriangleFunctor<CalcTriangleFunctor> ctf;
+    ctf.setTask( BUILD_BSP );
+    ctf.setVerticsPtr( &(coords->front()), coords->size() );
+    ctf.setBspPtr( bsp );
+    model.accept( ctf );
+
+    bsp->buildBspTree();
+}
+
+void ModelVisitor::buildMesh( PolyMesh& mesh )
+{
+    if ( !checkPrimitives(mesh) ) return;
+
+    osg::Vec3Array *coords = dynamic_cast<osg::Vec3Array*>( mesh.getVertexArray() );
+    if ( !coords || !coords->size() ) return;
+
+    osg::TriangleFunctor<CalcTriangleFunctor> ctf;
+    ctf.setTask( BUILD_MESH );
+    ctf.setVerticsPtr( &(coords->front()), coords->size() );
+    ctf.setMeshPtr( &(mesh._vertices), &(mesh._edges), &(mesh._faces) );
+    mesh.accept( ctf );
+
+    // Test
+    /*int i=0;
+    for ( PolyMesh::EdgeList::iterator itr=mesh._edges.begin();
+        itr!=mesh._edges.end();
+        ++itr, ++i )
+    {
+        PolyMesh::Edge* edge = *itr;
+        std::cout << "Edge " << i << ": ";
+        std::cout << "[" << edge->_faces.size() << "](" << edge->_v[0]->_index
+            << ", " << edge->_v[1]->_index << ")";
+
+        for ( PolyMesh::VertexList::iterator vitr=face->_vertices.begin();
+            vitr!=face->_vertices.end();
+            ++vitr )
+        {
+            PolyMesh::Vertex* vertex = *vitr;
+            osg::Vec3 vec = (*coords)[vertex->_index];
+            std::cout << "[" << vertex->_index << "](" <<
+                vec.x() << ", " << vec.y() << ", " << vec.z() << ")";
+            std::cout << " & " << vertex->_faces.size() << "F; ";
+        }
+        std::cout << std::endl;
+    }*/
+}
+
+void ModelVisitor::apply(osg::Geode& geode)
+{
+    for(unsigned int i = 0; i < geode.getNumDrawables(); i++ )
+    {
+        if ( _task==CREATE_NORMALS || _task==CREATE_FLIP_NORMALS )
+        {
+            osg::Geometry* geom = dynamic_cast<osg::Geometry*>( geode.getDrawable(i) );
+            if ( geom )
+                buildNormal( *geom, _task==CREATE_FLIP_NORMALS?true:false );
+        }
+        else if ( _task==BUILD_BSP )
+        {
+            Model* model = dynamic_cast<Model*>( geode.getDrawable(i) );
+            if ( model ) buildBSP( *model );
+        }
+        else if ( _task==BUILD_MESH )
+        {
+            PolyMesh* mesh = dynamic_cast<PolyMesh*>( geode.getDrawable(i) );
+            if ( mesh ) buildMesh( *mesh );
+        }
+    }
+}
