@@ -26,14 +26,6 @@
 
 using namespace osgModeling;
 
-struct LessPtr
-{
-    inline bool operator() ( const osg::Vec3* lhs, const osg::Vec3* rhs ) const
-    {
-        return *lhs < *rhs;
-    }
-};
-
 struct FindEdgePtr 
 {
     PolyMesh::Vertex* _v[2];
@@ -52,32 +44,9 @@ struct FindEdgePtr
 
 struct CalcTriangleFunctor
 {
-    typedef std::multiset<const osg::Vec3*, LessPtr> CoordinateSet;
-
     ModelVisitor::GeometryTask _task;
     unsigned int _coordSize;
-    CoordinateSet _coordSet;
     osg::Vec3* _coordBase;
-
-    // Normal calculating variables & functions.
-    osg::Vec3* _normalBase;
-
-    void setNormalPtr( osg::Vec3* nb )
-    {
-        _normalBase = nb;
-    }
-
-    inline void incNormal( const osg::Vec3& vec, const osg::Vec3& normal )
-    {
-        std::pair<CoordinateSet::iterator, CoordinateSet::iterator> p =
-            _coordSet.equal_range( &vec );
-
-        for ( CoordinateSet::iterator itr=p.first; itr!=p.second; ++itr )
-        {
-            osg::Vec3* nptr = _normalBase + (*itr - _coordBase);
-            *nptr += normal;
-        }
-    }
 
     // Polymesh building variables & functions.
     PolyMesh::VertexList* _meshVertices;
@@ -147,10 +116,6 @@ struct CalcTriangleFunctor
     {
         _coordSize = cs;
         _coordBase = cb;
-
-        osg::Vec3* vptr = cb;
-        for ( unsigned int i=0; i<cs; ++i )
-            _coordSet.insert( vptr++ );
     }
 
     inline void operator() ( const osg::Vec3& v1, const osg::Vec3& v2, const osg::Vec3& v3, bool treatVertexDataAsTemporary )
@@ -158,15 +123,7 @@ struct CalcTriangleFunctor
         if ( treatVertexDataAsTemporary )
             return;
         
-        if ( _task==ModelVisitor::CREATE_NORMALS || _task==ModelVisitor::CREATE_FLIP_NORMALS )
-        {
-            int flip = (_task==ModelVisitor::CREATE_FLIP_NORMALS)?-1:1;
-            osg::Vec3 normal = (v2-v1)^(v3-v1) * flip;
-            incNormal( v1, normal );
-            incNormal( v2, normal );
-            incNormal( v3, normal );
-        }
-        else if ( _task==ModelVisitor::BUILD_MESH )
+        if ( _task==ModelVisitor::BUILD_MESH )
         {
             PolyMesh::Face* face = new PolyMesh::Face;
             _meshFaces->push_back( face );
@@ -228,36 +185,6 @@ bool ModelVisitor::checkPrimitives( osg::Geometry& geom )
     return true;
 }
 
-void ModelVisitor::buildNormal( osg::Geometry& geom, bool flip )
-{
-    if ( !checkPrimitives(geom) ) return;
-
-    osg::Vec3Array *coords = dynamic_cast<osg::Vec3Array*>( geom.getVertexArray() );
-    if ( !coords || !coords->size() ) return;
-
-    osg::Vec3Array::iterator nitr;
-    osg::Vec3Array *normals = new osg::Vec3Array( coords->size() );
-    for ( nitr=normals->begin(); nitr!=normals->end(); ++nitr )
-    {
-        nitr->set( 0.0f, 0.0f, 0.0f );
-    }
-
-    osg::TriangleFunctor<CalcTriangleFunctor> ctf;
-    ctf.setTask( flip?CREATE_FLIP_NORMALS:CREATE_NORMALS );
-    ctf.setVerticsPtr( &(coords->front()), coords->size() );
-    ctf.setNormalPtr( &(normals->front()) );
-    geom.accept( ctf );
-
-    for ( nitr=normals->begin(); nitr!=normals->end(); ++nitr )
-    {
-        nitr->normalize();
-    }
-
-    geom.setNormalArray( normals );
-    geom.setNormalIndices( geom.getVertexIndices() );
-    geom.setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
-}
-
 void ModelVisitor::buildBSP( Model& model )
 {
     if ( !checkPrimitives(model) ) return;
@@ -317,13 +244,7 @@ void ModelVisitor::apply(osg::Geode& geode)
 {
     for(unsigned int i = 0; i < geode.getNumDrawables(); i++ )
     {
-        if ( _task==CREATE_NORMALS || _task==CREATE_FLIP_NORMALS )
-        {
-            osg::Geometry* geom = dynamic_cast<osg::Geometry*>( geode.getDrawable(i) );
-            if ( geom )
-                buildNormal( *geom, _task==CREATE_FLIP_NORMALS?true:false );
-        }
-        else if ( _task==BUILD_BSP )
+        if ( _task==BUILD_BSP )
         {
             Model* model = dynamic_cast<Model*>( geode.getDrawable(i) );
             if ( model ) buildBSP( *model );

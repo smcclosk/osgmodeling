@@ -1,0 +1,9 @@
+2008-11-6 Wang Rui (r3)
+
+  * Add NormalVisitor and TexCoordVisitor headers
+  * Add setNormalGenerator() and setTexCoordGenerator() for Model
+  * Migrate current normal creating code from ModelVisitor to NormalVisitor
+
+2008-11-4 Wang Rui (r2)
+
+  * Release 0.1.0

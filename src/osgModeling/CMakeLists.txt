@@ -7,6 +7,8 @@ SET(HEADERS
     ${HEADER_PATH}/Curve
     ${HEADER_PATH}/Model
     ${HEADER_PATH}/ModelVisitor
+    ${HEADER_PATH}/NormalVisitor
+    ${HEADER_PATH}/TexCoordVisitor
     ${HEADER_PATH}/Utilities
     ${HEADER_PATH}/Extrude
     ${HEADER_PATH}/Lathe
@@ -22,6 +24,8 @@ SET(HEADERS
 SET(SOURCES
     Curve.cpp
     ModelVisitor.cpp
+    NormalVisitor.cpp
+    TexCoordVisitor.cpp
     Utilities.cpp
     Extrude.cpp
     Lathe.cpp

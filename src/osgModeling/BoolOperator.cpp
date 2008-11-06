@@ -20,6 +20,7 @@
 #include <osgModeling/BspTree>
 #include <osgModeling/BoolOperator>
 #include <osgModeling/ModelVisitor>
+#include <osgModeling/NormalVisitor>
 
 using namespace osgModeling;
 
@@ -169,7 +170,7 @@ bool BoolOperator::convertFacesToGeometry( FaceList faces, osg::Geometry* geom )
 
     geom->addPrimitiveSet( indices.get() );
     geom->setVertexArray( vertics.get() );
-    ModelVisitor::buildNormal( *geom );
+    NormalVisitor::buildNormal( *geom );
     geom->dirtyDisplayList();
     return true;
 }

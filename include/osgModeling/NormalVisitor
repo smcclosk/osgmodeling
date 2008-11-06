@@ -15,8 +15,8 @@
 * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#ifndef OSGMODELING_MODELVISITOR
-#define OSGMODELING_MODELVISITOR 1
+#ifndef OSGMODELING_NORMALVISITOR
+#define OSGMODELING_NORMALVISITOR 1
 
 #include <osg/NodeVisitor>
 #include <osg/Geode>
@@ -26,37 +26,24 @@
 
 namespace osgModeling {
 
-class PolyMesh;
 class Model;
 
-/** Modeling aid visitor class
- * It supports creating polygonal meshes and building BSP trees.
+/** Vertex normal creating visitor class
+ * It supports creating normals with different methods.
  */
-class OSGMODELING_EXPORT ModelVisitor : public osg::NodeVisitor
+class OSGMODELING_EXPORT NormalVisitor : public osg::NodeVisitor
 {
 public:
-    enum GeometryTask { BUILD_MESH=0x4, BUILD_BSP=0x8 };
+    NormalVisitor();
+    virtual ~NormalVisitor();
 
-    ModelVisitor();
-    virtual ~ModelVisitor();
+    /** Create normals for geometry. */
+    static void buildNormal( osg::Geometry& geoset, bool flip=false );
 
-    /** Set tasks for each drawables to do. Use 'OR' operation to select from enum GeometryTask. */
-    inline void setTask( GeometryTask t=BUILD_BSP ) { _task = t; }
-    inline GeometryTask getTask() const { return _task; }
-
-    /** Build BSP tree for models, which helps do bool operations or intersections. */
-    static void buildBSP( Model& model );
-
-    /** Build a polygon mesh, generating vertex-edge-face list for future uses. */
-    static void buildMesh( PolyMesh& mesh );
-
-    /** apply modeling aid methods, which are set with setTask. */
     virtual void apply( osg::Geode& geode );
 
 protected:
     static bool checkPrimitives( osg::Geometry& geom );
-
-    GeometryTask _task;
 };
 
 }
