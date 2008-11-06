@@ -22,6 +22,8 @@
 #include <osg/CopyOp>
 #include <osg/Geometry>
 #include <osgModeling/BspTree>
+#include <osgModeling/NormalVisitor>
+#include <osgModeling/TexCoordVisitor>
 #include <osgModeling/Curve>
 
 namespace osgModeling {
@@ -38,27 +40,25 @@ public:
 
     Model():
         osg::Geometry(),
-        _updated(false), _partsToGenerate(BODY_PART), _coordsToGenerate(ALL_COORDS),
-        _funcs(0), _algorithmCallback(0), _bspTree(0)
+        _updated(false), _partsToGenerate(BODY_PART), _coordsToGenerate(ALL_COORDS), _funcs(0),
+        _algorithmCallback(0), _normalGenerator(0), _texCoordGenerator(0), _bspTree(0)
     {
     }
 
     Model( const osg::Geometry& copy, const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY ):
         osg::Geometry(copy,copyop),
-        _updated(true), _funcs(0), _algorithmCallback(0), _bspTree(0)
+        _updated(true), _funcs(0), _algorithmCallback(0),
+        _normalGenerator(0), _texCoordGenerator(0), _bspTree(0)
     {
     }
 
     Model( const Model& copy, const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY ):
         osg::Geometry(copy,copyop),
         _updated(copy._updated), _partsToGenerate(copy._partsToGenerate), _coordsToGenerate(copy._coordsToGenerate),
-        _funcs(copy._funcs), _algorithmCallback(copy._algorithmCallback), _bspTree(copy._bspTree)
+        _funcs(copy._funcs), _algorithmCallback(copy._algorithmCallback), _normalGenerator(copy._normalGenerator),
+        _texCoordGenerator(copy._texCoordGenerator), _bspTree(copy._bspTree)
     {
     }
-
-    virtual bool isSameKindAs(const Object* obj) const { return dynamic_cast<const Model*>(obj)!=NULL; }
-    virtual const char* libraryName() const { return "osgModeling"; }
-    virtual const char* className() const { return "Model"; }
 
     /** Set which part of the model should be generated. Use 'OR' operation to select from enum GenerateParts. */
     inline void setGenerateParts( int gp=ALL_PARTS )
@@ -97,6 +97,14 @@ public:
      */
     inline void setAlgorithmCallback( AlgorithmCallback* ac ) { _algorithmCallback=ac; }
     inline AlgorithmCallback* getAlgorithmCallback() { return _algorithmCallback.get(); }
+
+    /** Set the normal generator to use, or there will be default one. */
+    inline void setNormalGenerator( NormalVisitor* nv ) { _normalGenerator=nv; }
+    inline NormalVisitor* getNormalGenerator() { return _normalGenerator.get(); }
+
+    /** Set the texture coordinates generator to use, or there will be default one. */
+    inline void setTexCoordGenerator( TexCoordVisitor* tcv ) { _texCoordGenerator=tcv; }
+    inline TexCoordVisitor* getTexCoordGenerator() { return _texCoordGenerator.get(); }
 
     /** Attach a BSP tree to the model. */
     inline void setBspTree( BspTree* bsp ) { _bspTree=bsp; }
@@ -139,6 +147,8 @@ protected:
     int _funcs;
 
     osg::ref_ptr<AlgorithmCallback> _algorithmCallback;
+    osg::ref_ptr<NormalVisitor> _normalGenerator;
+    osg::ref_ptr<TexCoordVisitor> _texCoordGenerator;
     osg::ref_ptr<BspTree> _bspTree;
 };
 

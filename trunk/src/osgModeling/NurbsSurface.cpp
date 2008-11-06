@@ -19,7 +19,8 @@
 #include <functional>
 #include <osgModeling/Utilities>
 #include <osgModeling/Nurbs>
-#include <osgModeling/ModelVisitor>
+#include <osgModeling/NormalVisitor>
+#include <osgModeling/TexCoordVisitor>
 
 using namespace osgModeling;
 
@@ -165,7 +166,7 @@ void NurbsSurface::updateImplementation()
     // Calculate normals using smoothing visitor.
     if ( getGenerateCoords()&Model::NORMAL_COORDS )
     {
-        osgModeling::ModelVisitor::buildNormal( *this, getAuxFunctions()&Model::FLIP_NORMAL );
+        osgModeling::NormalVisitor::buildNormal( *this, getAuxFunctions()&Model::FLIP_NORMAL );
     }
 
     // Calculate texture coordinates.

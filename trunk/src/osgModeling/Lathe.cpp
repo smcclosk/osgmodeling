@@ -17,8 +17,8 @@
 
 #include <osgModeling/Utilities>
 #include <osgModeling/Lathe>
-#include <osgModeling/ModelVisitor>
-#include <math.h>
+#include <osgModeling/NormalVisitor>
+#include <osgModeling/TexCoordVisitor>
 
 using namespace osgModeling;
 
@@ -151,7 +151,7 @@ void Lathe::updateImplementation()
     // Calculate normals using smoothing visitor.
     if ( getGenerateCoords()&Model::NORMAL_COORDS )
     {
-        osgModeling::ModelVisitor::buildNormal( *this, getAuxFunctions()&Model::FLIP_NORMAL );
+        osgModeling::NormalVisitor::buildNormal( *this, getAuxFunctions()&Model::FLIP_NORMAL );
     }
 
     // Calculate texture coordinates.
