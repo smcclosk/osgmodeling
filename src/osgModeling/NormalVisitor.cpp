@@ -41,23 +41,38 @@ struct CalcNormalFunctor
 
     // Normal calculating variables & functions.
     bool _flip;
+    int _method;
+    double _threshold;
     osg::Vec3* _normalBase;
+    osg::MixinVector<osg::Vec3> _lastNormalRecorder;
 
-    void setNormalPtr( osg::Vec3* nb, bool flip )
+    void setNormalParameters( osg::Vec3* nb, bool flip, int method, double t )
     {
         _normalBase = nb;
         _flip = flip;
+        _method = method;
+        _threshold = t;
     }
 
-    inline void incNormal( const osg::Vec3& vec, const osg::Vec3& normal )
+    inline void incNormal( const osg::Vec3& vec, const osg::Vec3& normal, double weight )
     {
         std::pair<CoordinateSet::iterator, CoordinateSet::iterator> p =
             _coordSet.equal_range( &vec );
 
         for ( CoordinateSet::iterator itr=p.first; itr!=p.second; ++itr )
         {
-            osg::Vec3* nptr = _normalBase + (*itr - _coordBase);
-            *nptr += normal;
+            int pos = *itr - _coordBase;
+            double t = normal * _lastNormalRecorder[pos];
+            if ( _threshold<1.0f )
+            {
+                if ( !equivalent(_lastNormalRecorder[pos], osg::Vec3(0.0f,0.0f,0.0f)) 
+                    && t<_threshold && t>-_threshold )
+                    continue;
+            }
+
+            osg::Vec3* nptr = _normalBase + pos;
+            *nptr += normal * weight;
+            _lastNormalRecorder[pos] = normal;
         }
     }
 
@@ -73,23 +88,61 @@ struct CalcNormalFunctor
 
         osg::Vec3* vptr = cb;
         for ( unsigned int i=0; i<cs; ++i )
+        {
             _coordSet.insert( vptr++ );
+            _lastNormalRecorder.push_back( osg::Vec3(0.0f,0.0f,0.0f) );
+        }
     }
 
     inline void operator() ( const osg::Vec3& v1, const osg::Vec3& v2, const osg::Vec3& v3, bool treatVertexDataAsTemporary )
     {
-        if ( treatVertexDataAsTemporary )
+        if ( treatVertexDataAsTemporary || v1==v2 || v1==v3 || v2==v3 )
             return;
 
-        osg::Vec3 normal = (v2-v1)^(v3-v1) * (_flip?-1.0:1.0);
-        incNormal( v1, normal );
-        incNormal( v2, normal );
-        incNormal( v3, normal );
+        double w[3]= { 1.0f, 1.0f, 1.0f };
+        switch ( _method )
+        {
+        case 1:
+            w[0] = asin( ((v2-v1)^(v3-v1)).length()/((v2-v1).length()*(v3-v1).length()) );
+            w[1] = asin( ((v3-v2)^(v1-v2)).length()/((v3-v2).length()*(v1-v2).length()) );
+            w[2] = asin( ((v1-v3)^(v2-v3)).length()/((v1-v3).length()*(v2-v3).length()) );
+            break;
+        case 2:
+            w[0] = ((v2-v1)^(v3-v1)).length()/((v2-v1).length2()*(v3-v1).length2());
+            w[1] = ((v3-v2)^(v1-v2)).length()/((v3-v2).length2()*(v1-v2).length2());
+            w[2] = ((v1-v3)^(v2-v3)).length()/((v1-v3).length2()*(v2-v3).length2());
+            break;
+        case 3:
+            w[0] = ((v2-v1)^(v3-v1)).length();
+            w[1] = ((v3-v2)^(v1-v2)).length();
+            w[2] = ((v1-v3)^(v2-v3)).length();
+            break;
+        case 4:
+            w[0] = 1/((v2-v1).length()*(v3-v1).length());
+            w[1] = 1/((v3-v2).length()*(v1-v2).length());
+            w[2] = 1/((v1-v3).length()*(v2-v3).length());
+            break;
+        case 5:
+            w[0] = 1/sqrt((v2-v1).length()*(v3-v1).length());
+            w[1] = 1/sqrt((v3-v2).length()*(v1-v2).length());
+            w[2] = 1/sqrt((v1-v3).length()*(v2-v3).length());
+            break;
+        default:
+            break;
+        }
+        
+        osg::Vec3 normal = (v2-v1)^(v3-v1) * (_flip?-1.0f:1.0f);
+        incNormal( v1, normal, w[0] );
+        incNormal( v2, normal, w[1] );
+        incNormal( v3, normal, w[2] );
     }
 };
 
-NormalVisitor::NormalVisitor()
+NormalVisitor::NormalVisitor( int method, bool flip )
 {
+    _threshold = 1e-6f;
+    _method = method;
+    _flip = flip;
     setTraversalMode( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN );
 }
 
@@ -123,7 +176,7 @@ bool NormalVisitor::checkPrimitives( osg::Geometry& geom )
     return true;
 }
 
-void NormalVisitor::buildNormal( osg::Geometry& geom, bool flip )
+void NormalVisitor::buildNormal( osg::Geometry& geom, bool flip, int method, double threshold )
 {
     if ( !checkPrimitives(geom) ) return;
 
@@ -139,7 +192,7 @@ void NormalVisitor::buildNormal( osg::Geometry& geom, bool flip )
 
     osg::TriangleFunctor<CalcNormalFunctor> ctf;
     ctf.setVerticsPtr( &(coords->front()), coords->size() );
-    ctf.setNormalPtr( &(normals->front()), flip );
+    ctf.setNormalParameters( &(normals->front()), flip, method, threshold );
     geom.accept( ctf );
 
     for ( nitr=normals->begin(); nitr!=normals->end(); ++nitr )
@@ -157,7 +210,7 @@ void NormalVisitor::apply(osg::Geode& geode)
     for(unsigned int i = 0; i < geode.getNumDrawables(); i++ )
     {
       osg::Geometry* geom = dynamic_cast<osg::Geometry*>( geode.getDrawable(i) );
-      if ( geom )
-      	buildNormal( *geom, false );
+      if ( geom ) buildNormal( *geom, _flip, _method, _threshold );
     }
 }
+

@@ -34,16 +34,41 @@ class Model;
 class OSGMODELING_EXPORT NormalVisitor : public osg::NodeVisitor
 {
 public:
-    NormalVisitor();
+    NormalVisitor( int method=0, bool flip=false );
     virtual ~NormalVisitor();
 
+    /** Set normal algorithm to use.
+     * There are 6 methods at present:
+     * - 0: "Mean Weighted Equally" (Henri Gouraud, 1971), also known as the smoothing normal.
+     * - 1: "Mean Weighted by Angle" (Thurmer and Wuthrich, 1998).
+     * - 2: "Mean Weighted by Sine and Edge Length Reciprocals" (Max, 1999).
+     * - 3: "Mean Weighted by Areas of Adjacent Triangles" (Max, 1999).
+     * - 4: "Mean Weighted by Edge Length Reciprocals" (Max, 1999).
+     * - 5: "Mean Weighted by Square Root of Edge Length Reciprocals" (Max, 1999).
+     */
+    inline void setMethod( int m ) { _method=m; }
+    inline int getMethod() const { return _method; }
+
+    /** Set a threshold to decide whether to include a triangle's for calculating.
+     * The threshold will be compared with the dot product of normals of 2 triangles sharing same vertex,
+     * and the normal will be included in the averaging if the dot product greater than the threshold.
+     * A corner vertex of a sharp crease (with a cosine 90 degree) will not be smoothing then.
+     * If you want a totally smooth geometry, just set the threshold to be greater than 1.
+     */
+    inline void setThreshold( double t ) { _threshold=t; }
+    inline double getThreshold() const { return _threshold; }
+
     /** Create normals for geometry. */
-    static void buildNormal( osg::Geometry& geoset, bool flip=false );
+    static void buildNormal( osg::Geometry& geoset, bool flip=false, int method=0, double threshold=1e-6 );
 
     virtual void apply( osg::Geode& geode );
 
 protected:
     static bool checkPrimitives( osg::Geometry& geom );
+
+    double _threshold;
+    int _method;
+    bool _flip;
 };
 
 }
