@@ -135,6 +135,8 @@ public:
     NurbsSurface( osg::Vec3Array* pts, osg::DoubleArray* weights, osg::DoubleArray* knotsU, osg::DoubleArray* knotsV,
         unsigned int degreeU=3, unsigned int degreeV=3, unsigned int numPathU=10, unsigned int numPathV=10 );
 
+    META_Object( osgModeling, NurbsSurface )
+
     /** Specifies parameters like gluNurbsSurface & no need to call update(). Provided for convenience.
      * The size of control points is determined by '(ukcount-uorder)*(vkcount-vorder)'.
      * \param ukcount Size of the knot vector.

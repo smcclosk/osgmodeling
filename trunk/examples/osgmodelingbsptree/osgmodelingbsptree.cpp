@@ -95,8 +95,6 @@ protected:
     unsigned int _samples;
 };
 
-#include <iostream>
-
 int main( int argc, char** argv )
 {
     osg::ArgumentParser arguments( &argc, argv );

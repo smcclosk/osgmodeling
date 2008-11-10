@@ -26,22 +26,6 @@
 
 using namespace osgModeling;
 
-struct FindEdgePtr 
-{
-    PolyMesh::Vertex* _v[2];
-
-    FindEdgePtr( PolyMesh::Vertex* v1, PolyMesh::Vertex* v2 )
-    { _v[0]=v1; _v[1]=v2; }
-
-    inline bool operator() ( const PolyMesh::Edge* edge )
-    {
-        if ( (_v[0]==edge->_v[0] && _v[1]==edge->_v[1])
-            || (_v[0]==edge->_v[1] && _v[1]==edge->_v[0]) )
-            return true;
-        return false;
-    }
-};
-
 struct CalcTriangleFunctor
 {
     ModelVisitor::GeometryTask _task;
@@ -49,52 +33,38 @@ struct CalcTriangleFunctor
     osg::Vec3* _coordBase;
 
     // Polymesh building variables & functions.
-    PolyMesh::VertexList* _meshVertices;
-    PolyMesh::EdgeList* _meshEdges;
+    PolyMesh::EdgeMap* _meshEdges;
     PolyMesh::FaceList* _meshFaces;
-    PolyMesh::VertexList _meshVecRecorder;
 
-    void setMeshPtr( PolyMesh::VertexList* vl, PolyMesh::EdgeList* el, PolyMesh::FaceList* fl )
+    void setMeshPtr( PolyMesh::EdgeMap* em, PolyMesh::FaceList* fl )
     {
-        _meshVertices = vl;
-        _meshEdges = el;
+        _meshEdges = em;
         _meshFaces = fl;
-        _meshVecRecorder.resize( _coordSize, NULL );
     }
 
-    inline PolyMesh::Vertex* buildMeshVertices( const osg::Vec3& vec, PolyMesh::Face* face )
+    inline PolyMesh::Face* buildMeshFace( const osg::Vec3& v1, const osg::Vec3& v2, const osg::Vec3& v3 )
     {
-        unsigned int pos = &vec - _coordBase;
-        PolyMesh::Vertex* vertex = _meshVecRecorder[pos];
-        if ( !vertex )
-        {
-            vertex = new PolyMesh::Vertex( pos, &vec );
-            _meshVertices->push_back( vertex );
-            _meshVecRecorder[pos] = vertex;
-        }
-
-        vertex->hasFace( face, true );
-        face->hasVertex( vertex, true );
-        return vertex;
+        int p1=&v1-_coordBase, p2=&v2-_coordBase, p3=&v3-_coordBase;
+        return new PolyMesh::Face( p1, p2, p3 );
     }
 
-    inline PolyMesh::Edge* buildMeshEdges( PolyMesh::Vertex* v1, PolyMesh::Vertex* v2, PolyMesh::Face* face )
+    inline void buildMeshEdges( PolyMesh::Face* face )
     {
-        PolyMesh::EdgeList::iterator itr =
-            std::find_if( _meshEdges->begin(), _meshEdges->end(), FindEdgePtr(v1,v2) );
-
-        PolyMesh::Edge* edge;
-        if ( itr==_meshEdges->end() )
+        unsigned int size = face->_pts.size();
+        for ( unsigned int i=0; i<size; ++i )
         {
-            edge = new PolyMesh::Edge( v1, v2 );
-            _meshEdges->push_back( edge );
-        }
-        else edge = *itr;
+            int p1=(*face)[i%size], p2=(*face)[(i+1)%size];
+            PolyMesh::Segment p( p1, p2 );
+            if ( p1>p2 )
+            {
+                p.first = p2;
+                p.second = p1;
+            }
 
-        v1->hasEdge( edge, true );
-        v2->hasEdge( edge, true );
-        edge->hasFace( face, true );
-        return edge;
+            if ( _meshEdges->find(p)==_meshEdges->end() )
+                (*_meshEdges)[p] = new PolyMesh::Edge( p.first, p.second );
+            (*_meshEdges)[p]->hasFace( face, true );
+        }
     }
 
     // BSP faces building variables & functions.
@@ -120,19 +90,14 @@ struct CalcTriangleFunctor
 
     inline void operator() ( const osg::Vec3& v1, const osg::Vec3& v2, const osg::Vec3& v3, bool treatVertexDataAsTemporary )
     {
-        if ( treatVertexDataAsTemporary )
+        if ( treatVertexDataAsTemporary || v1==v2 || v1==v3 || v2==v3 )
             return;
         
         if ( _task==ModelVisitor::BUILD_MESH )
         {
-            PolyMesh::Face* face = new PolyMesh::Face;
+            PolyMesh::Face* face = buildMeshFace( v1, v2, v3 );
             _meshFaces->push_back( face );
-            PolyMesh::Vertex* pv1 = buildMeshVertices( v1, face );
-            PolyMesh::Vertex* pv2 = buildMeshVertices( v2, face );
-            PolyMesh::Vertex* pv3 = buildMeshVertices( v3, face );
-            buildMeshEdges( pv1, pv2, face );
-            buildMeshEdges( pv2, pv3, face );
-            buildMeshEdges( pv1, pv3, face );
+            buildMeshEdges( face );
         }
         else if ( _task==ModelVisitor::BUILD_BSP )
         {
@@ -212,32 +177,8 @@ void ModelVisitor::buildMesh( PolyMesh& mesh )
     osg::TriangleFunctor<CalcTriangleFunctor> ctf;
     ctf.setTask( BUILD_MESH );
     ctf.setVerticsPtr( &(coords->front()), coords->size() );
-    ctf.setMeshPtr( &(mesh._vertices), &(mesh._edges), &(mesh._faces) );
+    ctf.setMeshPtr( &(mesh._edges), &(mesh._faces) );
     mesh.accept( ctf );
-
-    // Test
-    /*int i=0;
-    for ( PolyMesh::EdgeList::iterator itr=mesh._edges.begin();
-        itr!=mesh._edges.end();
-        ++itr, ++i )
-    {
-        PolyMesh::Edge* edge = *itr;
-        std::cout << "Edge " << i << ": ";
-        std::cout << "[" << edge->_faces.size() << "](" << edge->_v[0]->_index
-            << ", " << edge->_v[1]->_index << ")";
-
-        for ( PolyMesh::VertexList::iterator vitr=face->_vertices.begin();
-            vitr!=face->_vertices.end();
-            ++vitr )
-        {
-            PolyMesh::Vertex* vertex = *vitr;
-            osg::Vec3 vec = (*coords)[vertex->_index];
-            std::cout << "[" << vertex->_index << "](" <<
-                vec.x() << ", " << vec.y() << ", " << vec.z() << ")";
-            std::cout << " & " << vertex->_faces.size() << "F; ";
-        }
-        std::cout << std::endl;
-    }*/
 }
 
 void ModelVisitor::apply(osg::Geode& geode)

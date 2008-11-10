@@ -66,6 +66,7 @@ IF(BUILD_EXAMPLES)
     ADD_SUBDIRECTORY(examples/osgmodelingnurbs)
     ADD_SUBDIRECTORY(examples/osgmodelingbsptree)
     ADD_SUBDIRECTORY(examples/osgmodelingboolean)
+    ADD_SUBDIRECTORY(examples/osgmodelingsubd)
     ADD_SUBDIRECTORY(data)
 ENDIF(BUILD_EXAMPLES)
 

@@ -18,9 +18,7 @@
 #ifndef OSGMODELING_ALGORITHM
 #define OSGMODELING_ALGORITHM 1
 
-#include <vector>
 #include <osg/Object>
-#include <osg/Vec3>
 #include <osgModeling/Export>
 
 namespace osgModeling {
