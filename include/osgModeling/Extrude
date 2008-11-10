@@ -37,6 +37,8 @@ public:
     /** Specifies parameters in constructor & no need to call update(). Provided for convenience. */
     Extrude( Curve* pts, double length, double scale, const osg::Vec3 dir );
 
+    META_Object( osgModeling, Extrude )
+
     /** Specifies how far the extrusion goes. */
     inline void setExtrudeLength( double length )
     {

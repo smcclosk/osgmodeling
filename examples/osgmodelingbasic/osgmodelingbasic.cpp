@@ -209,8 +209,6 @@ osg::ref_ptr<osg::Node> createLoft()
     return geode;
 }
 
-#include <iostream>
-
 int main( int argc, char** argv )
 {
     osg::ref_ptr<osg::PositionAttitudeTransform> extrusions = new osg::PositionAttitudeTransform;

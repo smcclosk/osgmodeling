@@ -16,6 +16,7 @@ SET(HEADERS
     ${HEADER_PATH}/Helix
     ${HEADER_PATH}/Bezier
     ${HEADER_PATH}/Nurbs
+    ${HEADER_PATH}/Subdivision
     ${HEADER_PATH}/BspTree
     ${HEADER_PATH}/BoolOperator
     ${HEADER_PATH}/PolyMesh
@@ -35,6 +36,7 @@ SET(SOURCES
     BezierSurface.cpp
     NurbsCurve.cpp
     NurbsSurface.cpp
+    Subdivision.cpp
     BspTree.cpp
     BoolOperator.cpp
     PolyMesh.cpp

@@ -41,6 +41,8 @@ public:
     /** Specifies parameters in constructor & no need to call update(). Provided for convenience. */
     Loft( Curve* pts, Curve* section );
 
+    META_Object( osgModeling, Loft )
+
     /** Specifies a vertex list as path of the lofting model. */
     inline void setProfile( Curve* pts ) { _profile=pts; if (_updated) _updated=false; }
     inline Curve* getProfile() { return _profile.get(); }

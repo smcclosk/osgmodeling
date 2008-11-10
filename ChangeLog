@@ -1,3 +1,11 @@
+2008-11-10 Wang Rui (r8)
+
+  * Rewrite PolyMesh class
+  * Add Subdivision headers
+  * Prepare the LoopSubdivision class
+  * Add new osgmodelingsubd example but not finished
+  * Add enum for NormalVisitor
+
 2008-11-7 Wang Rui (r7)
 
   * NormalVisitor implements 6 methods to calculate normals, with some parameters.

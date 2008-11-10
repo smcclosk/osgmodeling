@@ -16,39 +16,24 @@
 */
 
 #include <algorithm>
+#include <osgModeling/Subdivision>
 #include <osgModeling/PolyMesh>
+#include <osgModeling/ModelVisitor>
 
 using namespace osgModeling;
 
-bool PolyMesh::Vertex::hasEdge( PolyMesh::Edge* e, bool addIfNotFound )
+PolyMesh::Edge::Edge( int v1, int v2, int f ):
+    _flag(f)
 {
-    if ( !e ) return false;
-
-    PolyMesh::EdgeList::iterator rtn;
-    rtn = std::find( _edges.begin(), _edges.end(), e );
-    if ( rtn!=_edges.end() ) return false;
-
-    if ( addIfNotFound ) _edges.push_back( e );
-    return true;
-}
-
-bool PolyMesh::Vertex::hasFace( PolyMesh::Face* f, bool addIfNotFound )
-{
-    if ( !f ) return false;
-
-    PolyMesh::FaceList::iterator rtn;
-    rtn = std::find( _faces.begin(), _faces.end(), f );
-    if ( rtn!=_faces.end() ) return false;
-
-    if ( addIfNotFound ) _faces.push_back( f );
-    return true;
+    _v[0] = v1;
+    _v[1] = v2;
 }
 
 PolyMesh::EdgeType PolyMesh::Edge::getType()
 {
-    unsigned int size = _faces.size();
     if ( _v[0]<0 || _v[1]<0 || _v[0]==_v[1] ) return PolyMesh::INVALID_EDGE;
-    switch ( size )
+
+    switch ( _faces.size() )
     {
     case 0: return PolyMesh::INVALID_EDGE;
     case 1: return PolyMesh::BORDER_EDGE;
@@ -65,20 +50,32 @@ bool PolyMesh::Edge::hasFace( PolyMesh::Face* f, bool addIfNotFound )
     rtn = std::find( _faces.begin(), _faces.end(), f );
     if ( rtn!=_faces.end() ) return false;
 
-    if ( addIfNotFound ) _faces.push_back( f );
+    if ( addIfNotFound )
+        _faces.push_back( f );
     return true;
 }
 
-bool PolyMesh::Face::hasVertex( Vertex* v, bool addIfNotFound )
+PolyMesh::Face::Face( int p1, int p2, int p3, int f ):
+    _flag(f)
 {
-    if ( !v ) return false;
+    _pts.push_back( p1 );
+    _pts.push_back( p2 );
+    _pts.push_back( p3 );
+}
 
-    PolyMesh::VertexList::iterator rtn;
-    rtn = std::find( _vertices.begin(), _vertices.end(), v );
-    if ( rtn!=_vertices.end() ) return false;
+PolyMesh::Face::Face( VertexList pts, int f ):
+    _flag(f)
+{
+    _pts.insert( _pts.end(), pts.begin(), pts.end() );
+}
 
-    if ( addIfNotFound ) _vertices.push_back( v );
-    return true;
+int PolyMesh::Face::operator-( PolyMesh::Edge e )
+{
+    for ( PolyMesh::VertexList::iterator itr=_pts.begin(); itr!=_pts.end(); ++itr )
+    {
+        if ( *itr!=e[0] && *itr!=e[1] ) return *itr;
+    }
+    return -1;
 }
 
 PolyMesh::PolyMesh():
@@ -89,39 +86,46 @@ PolyMesh::PolyMesh():
 PolyMesh::PolyMesh( const osg::Geometry& copy, const osg::CopyOp& copyop ):
     osg::Geometry(copy,copyop)
 {
+    ModelVisitor::buildMesh( *this );
 }
 
 PolyMesh::PolyMesh( const PolyMesh& copy, const osg::CopyOp& copyop ):
-    osg::Geometry(copy,copyop)
+    osg::Geometry(copy,copyop),
+    _edges(copy._edges), _faces(copy._faces)
 {
 }
 
-PolyMesh::~PolyMesh() 
+PolyMesh::~PolyMesh()
 {
-    for ( VertexList::iterator itr=_vertices.begin();
-        itr!=_vertices.end(); )
-    {
-        if ( !(*itr) ) ++itr;
-        else
-        {
-            delete *itr; *itr = 0;
-            itr = _vertices.erase( itr );
-        }
-    }
+    destroyMesh();
+}
 
-    for ( EdgeList::iterator itr=_edges.begin();
-        itr!=_edges.end(); )
+PolyMesh::MeshType PolyMesh::getType()
+{
+    bool closed=true;
+    for ( EdgeMap::iterator itr=_edges.begin(); itr!=_edges.end(); ++itr )
     {
-        if ( !(*itr) ) ++itr;
+        EdgeType edgeType = itr->second->getType();
+        if ( edgeType==INVALID_EDGE ) return INVALID_MESH;
+        else if ( edgeType==JUNCTION_EDGE ) return NONMANIFOLD_MESH;
+        else if ( edgeType==BORDER_EDGE ) closed = false;
+    }
+    return (closed?CLOSED_MESH:OPEN_MESH);
+}
+
+void PolyMesh::destroyMesh()
+{
+    for ( EdgeMap::iterator itr=_edges.begin(); itr!=_edges.end(); )
+    {
+        if ( !(itr->second) ) ++itr;
         else
         {
-            delete *itr; *itr = 0;
+            delete itr->second; itr->second = 0;
             itr = _edges.erase( itr );
         }
     }
 
-    for ( FaceList::iterator itr=_faces.begin();
-        itr!=_faces.end(); )
+    for ( FaceList::iterator itr=_faces.begin(); itr!=_faces.end(); )
     {
         if ( !(*itr) ) ++itr;
         else
@@ -129,5 +133,109 @@ PolyMesh::~PolyMesh()
             delete *itr; *itr = 0;
             itr = _faces.erase( itr );
         }
+    }
+}
+
+void PolyMesh::subdivide( Subdivision* subd )
+{
+    if ( !subd ) return;
+    (*subd)( this );
+}
+
+PolyMesh::Edge* PolyMesh::getEdge( int p1, int p2 )
+{
+    Segment p( p1, p2 );
+    if ( p1>p2 )
+    {
+        p.first = p2;
+        p.second = p1;
+    }
+
+    if ( _edges.find(p)==_edges.end() ) return NULL;
+    else return _edges[p];
+}
+
+PolyMesh::EdgeList PolyMesh::findEdgeList( int p )
+{
+    EdgeList elist;
+    if ( p<0 ) return elist;
+
+    for ( EdgeMap::iterator itr=_edges.begin(); itr!=_edges.end(); ++itr )
+    {
+        if ( itr->first.first==p || itr->first.second==p )
+            elist.push_back( itr->second );
+    }
+    return elist;
+}
+
+PolyMesh::EdgeList PolyMesh::findEdgeList( Face* f )
+{
+    EdgeList elist;
+    if ( !f ) return elist;
+
+    unsigned int size = f->_pts.size();
+    for ( unsigned int i=0; i<size; ++i )
+    {
+        int p1=(*f)[i%size], p2=(*f)[(i+1)%size];
+        Edge* edge = getEdge( p1, p2 );
+        if ( edge ) elist.push_back( edge );
+    }
+    return elist;
+}
+
+PolyMesh::VertexList PolyMesh::findNeighbors( int p )
+{
+    VertexList vlist;
+    if ( p<0 ) return vlist;
+
+    for ( EdgeMap::iterator itr=_edges.begin(); itr!=_edges.end(); ++itr )
+    {
+        if ( itr->first.first==p )
+            vlist.push_back( itr->first.second );
+        else if ( itr->first.second==p )
+            vlist.push_back( itr->first.first );
+    }
+    return vlist;
+}
+
+PolyMesh::FaceList PolyMesh::findNeighbors( Face* f )
+{
+    FaceList flist;
+    if ( !f ) return flist;
+
+    unsigned int size = f->_pts.size();
+    for ( unsigned int i=0; i<size; ++i )
+    {
+        int p1=(*f)[i%size], p2=(*f)[(i+1)%size];
+        Edge* edge = getEdge( p1, p2 );
+        if ( !edge ) continue;
+        
+        for ( FaceList::iterator itr=edge->_faces.begin();
+            itr!=edge->_faces.end();
+            ++itr )
+        {
+            if ( *itr!=f )
+                flist.push_back( *itr );
+        }
+    }
+    return flist;
+}
+
+void PolyMesh::buildEdges( Face* face )
+{
+    unsigned int size = face->_pts.size();
+    for ( unsigned int i=0; i<size; ++i )
+    {
+        int p1=(*face)[i%size], p2=(*face)[(i+1)%size];
+        PolyMesh::Segment p( p1, p2 );
+        if ( p1>p2 )
+        {
+            p.first = p2;
+            p.second = p1;
+        }
+
+        if ( _edges.find(p)==_edges.end() )
+            _edges[p] = new PolyMesh::Edge( p.first, p.second );
+        _edges[p]->hasFace( face, true );
     }
 }

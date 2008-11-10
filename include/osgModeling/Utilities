@@ -195,6 +195,15 @@ extern OSGMODELING_EXPORT double factorial( const int n, bool warnLargeValue=tru
 template<typename T>
 inline T lerp( const T& a, const T& b, double u ) { return a*(1.0f-u)+b*u; }
 
+/** Use to compare two vectors in a std::find_if function. */
+struct LessPtr
+{
+    inline bool operator() ( const osg::Vec3* lhs, const osg::Vec3* rhs ) const
+    {
+        return *lhs < *rhs;
+    }
+};
+
 }
 
 #endif

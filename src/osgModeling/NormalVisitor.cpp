@@ -24,14 +24,6 @@
 
 using namespace osgModeling;
 
-struct LessPtr
-{
-    inline bool operator() ( const osg::Vec3* lhs, const osg::Vec3* rhs ) const
-    {
-        return *lhs < *rhs;
-    }
-};
-
 struct CalcNormalFunctor
 {
     typedef std::multiset<const osg::Vec3*, LessPtr> CoordinateSet;
@@ -102,27 +94,27 @@ struct CalcNormalFunctor
         double w[3]= { 1.0f, 1.0f, 1.0f };
         switch ( _method )
         {
-        case 1:
+        case NormalVisitor::MWA:
             w[0] = asin( ((v2-v1)^(v3-v1)).length()/((v2-v1).length()*(v3-v1).length()) );
             w[1] = asin( ((v3-v2)^(v1-v2)).length()/((v3-v2).length()*(v1-v2).length()) );
             w[2] = asin( ((v1-v3)^(v2-v3)).length()/((v1-v3).length()*(v2-v3).length()) );
             break;
-        case 2:
+        case NormalVisitor::MWSELR:
             w[0] = ((v2-v1)^(v3-v1)).length()/((v2-v1).length2()*(v3-v1).length2());
             w[1] = ((v3-v2)^(v1-v2)).length()/((v3-v2).length2()*(v1-v2).length2());
             w[2] = ((v1-v3)^(v2-v3)).length()/((v1-v3).length2()*(v2-v3).length2());
             break;
-        case 3:
+        case NormalVisitor::MWAAT:
             w[0] = ((v2-v1)^(v3-v1)).length();
             w[1] = ((v3-v2)^(v1-v2)).length();
             w[2] = ((v1-v3)^(v2-v3)).length();
             break;
-        case 4:
+        case NormalVisitor::MWELR:
             w[0] = 1/((v2-v1).length()*(v3-v1).length());
             w[1] = 1/((v3-v2).length()*(v1-v2).length());
             w[2] = 1/((v1-v3).length()*(v2-v3).length());
             break;
-        case 5:
+        case NormalVisitor::MWSRELR:
             w[0] = 1/sqrt((v2-v1).length()*(v3-v1).length());
             w[1] = 1/sqrt((v3-v2).length()*(v1-v2).length());
             w[2] = 1/sqrt((v1-v3).length()*(v2-v3).length());
