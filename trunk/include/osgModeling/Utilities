@@ -18,6 +18,7 @@
 #ifndef OSGMODELING_UTILITIES
 #define OSGMODELING_UTILITIES 1
 
+#include <iostream>
 #include <osg/io_utils>
 #include <osg/Notify>
 #include <osg/Array>
@@ -28,6 +29,12 @@
 #include <osgModeling/Export>
 
 namespace osgModeling {
+
+/** Print debug information on the console. */
+#define PRINT_VEC2(log, v) \
+    std::cout << log << ": " << v.x() << ", " << v.y() << std::endl;
+#define PRINT_VEC3(log, v) \
+    std::cout << log << ": " << v.x() << ", " << v.y() << ", " << v.z() << std::endl;
 
 /** return TRUE if equivalent, meaning that the difference between 2 points is less than an epsilon value.*/
 inline bool equivalent( osg::Vec3 lhs, osg::Vec3 rhs=osg::Vec3(0.0f,0.0f,0.0f), double epsilon=1e-6 )

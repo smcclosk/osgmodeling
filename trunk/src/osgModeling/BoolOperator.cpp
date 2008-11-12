@@ -168,6 +168,7 @@ bool BoolOperator::convertFacesToGeometry( FaceList faces, osg::Geometry* geom )
         }
     }
 
+    geom->removePrimitiveSet( 0, geom->getPrimitiveSetList().size() );
     geom->addPrimitiveSet( indices.get() );
     geom->setVertexArray( vertics.get() );
     NormalVisitor::buildNormal( *geom );

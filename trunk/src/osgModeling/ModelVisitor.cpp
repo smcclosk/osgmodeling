@@ -28,11 +28,14 @@ using namespace osgModeling;
 
 struct CalcTriangleFunctor
 {
+    typedef std::multiset<const osg::Vec3*, LessPtr> CoordinateSet;
     ModelVisitor::GeometryTask _task;
     unsigned int _coordSize;
-    osg::Vec3* _coordBase;
+    CoordinateSet _coordSet;
+    osg::Vec3Array* _coordArray;
 
     // Polymesh building variables & functions.
+    typedef std::pair<CoordinateSet::iterator, CoordinateSet::iterator> EqualGroup;
     PolyMesh::EdgeMap* _meshEdges;
     PolyMesh::FaceList* _meshFaces;
 
@@ -42,29 +45,41 @@ struct CalcTriangleFunctor
         _meshFaces = fl;
     }
 
-    inline PolyMesh::Face* buildMeshFace( const osg::Vec3& v1, const osg::Vec3& v2, const osg::Vec3& v3 )
+    inline void buildEdge( EqualGroup g1, EqualGroup g2, PolyMesh::Face* face )
     {
-        int p1=&v1-_coordBase, p2=&v2-_coordBase, p3=&v3-_coordBase;
-        return new PolyMesh::Face( p1, p2, p3 );
+        for ( CoordinateSet::iterator itr1=g1.first; itr1!=g1.second; ++itr1 )
+        {
+            osg::Vec3 p1 = *(*itr1);
+            for ( CoordinateSet::iterator itr2=g2.first; itr2!=g2.second; ++itr2 )
+            {
+                osg::Vec3 p2 = *(*itr2);
+                PolyMesh::Segment p( p1, p2 );
+                if ( p2<p1 )
+                {
+                    p.first = p2;
+                    p.second = p1;
+                }
+
+                if ( _meshEdges->find(p)==_meshEdges->end() )
+                    (*_meshEdges)[p] = new PolyMesh::Edge( p.first, p.second );
+                (*_meshEdges)[p]->hasFace( face, true );
+            }
+        }
     }
 
-    inline void buildMeshEdges( PolyMesh::Face* face )
+    inline void buildMesh( const osg::Vec3& v1, const osg::Vec3& v2, const osg::Vec3& v3 )
     {
-        unsigned int size = face->_pts.size();
-        for ( unsigned int i=0; i<size; ++i )
-        {
-            int p1=(*face)[i%size], p2=(*face)[(i+1)%size];
-            PolyMesh::Segment p( p1, p2 );
-            if ( p1>p2 )
-            {
-                p.first = p2;
-                p.second = p1;
-            }
+        osg::Vec3* cb = &(_coordArray->front());
+        int p1=&v1-cb, p2=&v2-cb, p3=&v3-cb;
+        PolyMesh::Face* face =  new PolyMesh::Face( _coordArray, p1, p2, p3 );
+        _meshFaces->push_back( face );
 
-            if ( _meshEdges->find(p)==_meshEdges->end() )
-                (*_meshEdges)[p] = new PolyMesh::Edge( p.first, p.second );
-            (*_meshEdges)[p]->hasFace( face, true );
-        }
+        EqualGroup g1=_coordSet.equal_range(&v1),
+            g2=_coordSet.equal_range(&v2),
+            g3=_coordSet.equal_range(&v3);
+        buildEdge( g1, g2, face );
+        buildEdge( g2, g3, face );
+        buildEdge( g3, g1, face ); 
     }
 
     // BSP faces building variables & functions.
@@ -77,15 +92,19 @@ struct CalcTriangleFunctor
 
     // General functions.
     CalcTriangleFunctor():
-        _coordSize(0), _coordBase(0)
+        _coordSize(0), _coordArray(0)
     {}
 
     void setTask( ModelVisitor::GeometryTask t ) { _task=t; }
 
-    void setVerticsPtr( osg::Vec3* cb, unsigned int cs )
+    void setVerticsPtr( osg::Vec3Array* ca, unsigned int cs )
     {
         _coordSize = cs;
-        _coordBase = cb;
+        _coordArray = ca;
+
+        osg::Vec3* vptr = &(ca->front());
+        for ( unsigned int i=0; i<cs; ++i )
+            _coordSet.insert( vptr++ );
     }
 
     inline void operator() ( const osg::Vec3& v1, const osg::Vec3& v2, const osg::Vec3& v3, bool treatVertexDataAsTemporary )
@@ -95,9 +114,7 @@ struct CalcTriangleFunctor
         
         if ( _task==ModelVisitor::BUILD_MESH )
         {
-            PolyMesh::Face* face = buildMeshFace( v1, v2, v3 );
-            _meshFaces->push_back( face );
-            buildMeshEdges( face );
+            buildMesh( v1, v2, v3 );
         }
         else if ( _task==ModelVisitor::BUILD_BSP )
         {
@@ -160,7 +177,7 @@ void ModelVisitor::buildBSP( Model& model )
 
     osg::TriangleFunctor<CalcTriangleFunctor> ctf;
     ctf.setTask( BUILD_BSP );
-    ctf.setVerticsPtr( &(coords->front()), coords->size() );
+    ctf.setVerticsPtr( coords, coords->size() );
     ctf.setBspPtr( bsp );
     model.accept( ctf );
 
@@ -171,12 +188,12 @@ void ModelVisitor::buildMesh( PolyMesh& mesh )
 {
     if ( !checkPrimitives(mesh) ) return;
 
-    osg::Vec3Array *coords = dynamic_cast<osg::Vec3Array*>( mesh.getVertexArray() );
+    osg::Vec3Array* coords = dynamic_cast<osg::Vec3Array*>( mesh.getVertexArray() );
     if ( !coords || !coords->size() ) return;
 
     osg::TriangleFunctor<CalcTriangleFunctor> ctf;
     ctf.setTask( BUILD_MESH );
-    ctf.setVerticsPtr( &(coords->front()), coords->size() );
+    ctf.setVerticsPtr( coords, coords->size() );
     ctf.setMeshPtr( &(mesh._edges), &(mesh._faces) );
     mesh.accept( ctf );
 }

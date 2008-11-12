@@ -31,9 +31,9 @@ public:
     Subdivision() : AlgorithmCallback() {}
     Subdivision( const Subdivision& copy, const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY ):
         AlgorithmCallback(copy, copyop) {}
-    META_Object( osgModeling, Subdivision )
 
-    virtual void operator()( PolyMesh* mesh ) {}
+    virtual void operator()( PolyMesh* mesh );
+    virtual void subdivide( PolyMesh* mesh ) = 0;
 
 protected:
     virtual ~Subdivision() {}
@@ -42,17 +42,22 @@ protected:
 class OSGMODELING_EXPORT LoopSubdivision : public Subdivision
 {
 public:
+    typedef std::map<PolyMesh::Edge*, int> EdgeSplitMap;
+
     LoopSubdivision();
     LoopSubdivision( const LoopSubdivision& copy, const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY );
     META_Object( osgModeling, LoopSubdivision )
 
-    virtual void operator()( PolyMesh* mesh );
+    virtual void subdivide( PolyMesh* mesh );
 
 protected:
     virtual ~LoopSubdivision();
 
-    void subdivideFace( PolyMesh::Face* f, osg::Vec3Array* pts );
+    void subdivideVertices( PolyMesh* mesh, osg::Vec3Array* pts, unsigned int ptNum );
+    void subdivideFace( PolyMesh* mesh, PolyMesh::Face* f, osg::Vec3Array* pts );
 
+    EdgeSplitMap _edgeVertices;
+    PolyMesh::EdgeMap _tempEdges;
     PolyMesh::FaceList _tempFaces;
 };
 

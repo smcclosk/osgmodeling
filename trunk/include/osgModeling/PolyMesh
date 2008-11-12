@@ -35,9 +35,10 @@ class OSGMODELING_EXPORT PolyMesh : public osg::Geometry
 public:
     struct Edge;
     struct Face;
-    typedef std::pair<int,int> Segment;
+    typedef std::pair<osg::Vec3,osg::Vec3> Segment;
     typedef std::map<Segment, Edge*> EdgeMap;
-    typedef osg::MixinVector<int> VertexList;
+    typedef osg::MixinVector<osg::Vec3> VertexList;
+    typedef osg::MixinVector<int> VertexIndexList;
     typedef osg::MixinVector<Edge*> EdgeList;
     typedef osg::MixinVector<Face*> FaceList;
 
@@ -48,12 +49,12 @@ public:
     struct Edge
     {
         int _flag;  // Flag for various cases
-        int _v[2];  // Vertex indices of the edge
+        osg::Vec3 _v[2];  // Vertex indices of the edge
         FaceList _faces; // Faces shared this edge
 
-        Edge( int v1, int v2, int f=0 );
-        inline int operator[]( unsigned int i ) { return _v[i]; }
-        int operator-( int v ) { return (_v[0]==v?_v[1]:_v[0]); }
+        Edge( osg::Vec3 v1, osg::Vec3 v2, int f=0 );
+        inline osg::Vec3 operator[]( unsigned int i ) { return _v[i]; }
+        osg::Vec3 operator-( osg::Vec3 v ) { return (_v[0]==v?_v[1]:_v[0]); }
 
         /** Check if the edge is shared by specified number of faces. */
         EdgeType getType();
@@ -66,12 +67,14 @@ public:
     struct Face
     {
         int _flag;  // Flag for various cases
-        VertexList _pts; // Vertices of this face
+        VertexIndexList _pts; // Vertices of this face
+        osg::Vec3Array* _array;  // Base pointer of the vertices array
 
-        Face( int p1, int p2, int p3, int f=0 );
-        Face( VertexList pts, int f=0 );
-        inline int operator[]( unsigned int i ) { return _pts[i]; }
-        int operator-( Edge e );
+        Face( osg::Vec3Array* array, int p1, int p2, int p3, int f=0 );
+        Face( osg::Vec3Array* array, VertexIndexList pts, int f=0 );
+        inline int operator()( unsigned int i ) { return _pts[i]; }
+        inline osg::Vec3 operator[]( unsigned int i ) { return (*_array)[_pts[i]]; }
+        osg::Vec3 operator-( Edge e );
     };
 
     PolyMesh();
@@ -89,27 +92,31 @@ public:
     virtual void subdivide( Subdivision* subd );
 
     /** Get the edge object from two points (indices). */
-    Edge* getEdge( int p1, int p2 );
+    Edge* getEdge( osg::Vec3 p1, osg::Vec3 p2 );
 
     /** Find all edges attached to a point (index). */
-    EdgeList findEdgeList( int p );
+    void findEdgeList( osg::Vec3 p, EdgeList& elist );
 
     /** Find all edges attached to a face. */
-    EdgeList findEdgeList( Face* f );
+    void findEdgeList( Face* f, EdgeList& elist );
 
     /** Find all points (indices) sharing edges with specified point. */
-    VertexList findNeighbors( int p );
+    void findNeighbors( osg::Vec3 p, VertexList& vlist );
 
     /** Find all faces sharing edges with specified face. */
-    FaceList findNeighbors( Face* f );
+    void findNeighbors( Face* f, FaceList& flist );
+
+    /** Convert the faces to a geometry object. */
+    static bool convertFacesToGeometry( FaceList faces, osg::Geometry* geom );
+
+    /** Build edges from a new created face and save to specified map. */
+    static void buildEdges( Face* f, EdgeMap& emap );
 
     EdgeMap _edges;
     FaceList _faces;
 
 protected:
     virtual ~PolyMesh();
-
-    void buildEdges( Face* face );
 };
 
 }

@@ -16,13 +16,15 @@
 */
 
 #include <algorithm>
+#include <osgModeling/Utilities>
 #include <osgModeling/Subdivision>
 #include <osgModeling/PolyMesh>
 #include <osgModeling/ModelVisitor>
+#include <osgModeling/NormalVisitor>
 
 using namespace osgModeling;
 
-PolyMesh::Edge::Edge( int v1, int v2, int f ):
+PolyMesh::Edge::Edge( osg::Vec3 v1, osg::Vec3 v2, int f ):
     _flag(f)
 {
     _v[0] = v1;
@@ -31,7 +33,7 @@ PolyMesh::Edge::Edge( int v1, int v2, int f ):
 
 PolyMesh::EdgeType PolyMesh::Edge::getType()
 {
-    if ( _v[0]<0 || _v[1]<0 || _v[0]==_v[1] ) return PolyMesh::INVALID_EDGE;
+    if ( _v[0]==_v[1] ) return PolyMesh::INVALID_EDGE;
 
     switch ( _faces.size() )
     {
@@ -55,27 +57,28 @@ bool PolyMesh::Edge::hasFace( PolyMesh::Face* f, bool addIfNotFound )
     return true;
 }
 
-PolyMesh::Face::Face( int p1, int p2, int p3, int f ):
-    _flag(f)
+PolyMesh::Face::Face( osg::Vec3Array* array, int p1, int p2, int p3, int f ):
+    _array(array), _flag(f)
 {
     _pts.push_back( p1 );
     _pts.push_back( p2 );
     _pts.push_back( p3 );
 }
 
-PolyMesh::Face::Face( VertexList pts, int f ):
-    _flag(f)
+PolyMesh::Face::Face( osg::Vec3Array* array, PolyMesh::VertexIndexList pts, int f ):
+    _array(array), _flag(f)
 {
     _pts.insert( _pts.end(), pts.begin(), pts.end() );
 }
 
-int PolyMesh::Face::operator-( PolyMesh::Edge e )
+osg::Vec3 PolyMesh::Face::operator-( PolyMesh::Edge e )
 {
-    for ( PolyMesh::VertexList::iterator itr=_pts.begin(); itr!=_pts.end(); ++itr )
+    for ( PolyMesh::VertexIndexList::iterator itr=_pts.begin(); itr!=_pts.end(); ++itr )
     {
-        if ( *itr!=e[0] && *itr!=e[1] ) return *itr;
+        osg::Vec3 v = (*_array)[*itr];
+        if ( v!=e[0] && v!=e[1] ) return v;
     }
-    return -1;
+    return osg::Vec3(0.0f,0.0f,0.0f);
 }
 
 PolyMesh::PolyMesh():
@@ -142,10 +145,10 @@ void PolyMesh::subdivide( Subdivision* subd )
     (*subd)( this );
 }
 
-PolyMesh::Edge* PolyMesh::getEdge( int p1, int p2 )
+PolyMesh::Edge* PolyMesh::getEdge( osg::Vec3 p1, osg::Vec3 p2 )
 {
     Segment p( p1, p2 );
-    if ( p1>p2 )
+    if ( p2<p1 )
     {
         p.first = p2;
         p.second = p1;
@@ -155,59 +158,42 @@ PolyMesh::Edge* PolyMesh::getEdge( int p1, int p2 )
     else return _edges[p];
 }
 
-PolyMesh::EdgeList PolyMesh::findEdgeList( int p )
+void PolyMesh::findEdgeList( osg::Vec3 p, EdgeList& elist )
 {
-    EdgeList elist;
-    if ( p<0 ) return elist;
-
     for ( EdgeMap::iterator itr=_edges.begin(); itr!=_edges.end(); ++itr )
     {
         if ( itr->first.first==p || itr->first.second==p )
             elist.push_back( itr->second );
     }
-    return elist;
 }
 
-PolyMesh::EdgeList PolyMesh::findEdgeList( Face* f )
+void PolyMesh::findEdgeList( Face* f, EdgeList& elist )
 {
-    EdgeList elist;
-    if ( !f ) return elist;
-
     unsigned int size = f->_pts.size();
     for ( unsigned int i=0; i<size; ++i )
     {
-        int p1=(*f)[i%size], p2=(*f)[(i+1)%size];
-        Edge* edge = getEdge( p1, p2 );
+        Edge* edge = getEdge( (*f)[i%size], (*f)[(i+1)%size] );
         if ( edge ) elist.push_back( edge );
     }
-    return elist;
 }
 
-PolyMesh::VertexList PolyMesh::findNeighbors( int p )
+void PolyMesh::findNeighbors( osg::Vec3 p, VertexList& vlist )
 {
-    VertexList vlist;
-    if ( p<0 ) return vlist;
-
     for ( EdgeMap::iterator itr=_edges.begin(); itr!=_edges.end(); ++itr )
     {
-        if ( itr->first.first==p )
+        if ( equivalent(itr->first.first,p) )
             vlist.push_back( itr->first.second );
-        else if ( itr->first.second==p )
+        else if ( equivalent(itr->first.second,p) )
             vlist.push_back( itr->first.first );
     }
-    return vlist;
 }
 
-PolyMesh::FaceList PolyMesh::findNeighbors( Face* f )
+void PolyMesh::findNeighbors( Face* f, FaceList& flist )
 {
-    FaceList flist;
-    if ( !f ) return flist;
-
     unsigned int size = f->_pts.size();
     for ( unsigned int i=0; i<size; ++i )
     {
-        int p1=(*f)[i%size], p2=(*f)[(i+1)%size];
-        Edge* edge = getEdge( p1, p2 );
+        Edge* edge = getEdge( (*f)[i%size], (*f)[(i+1)%size] );
         if ( !edge ) continue;
         
         for ( FaceList::iterator itr=edge->_faces.begin();
@@ -218,24 +204,58 @@ PolyMesh::FaceList PolyMesh::findNeighbors( Face* f )
                 flist.push_back( *itr );
         }
     }
-    return flist;
 }
 
-void PolyMesh::buildEdges( Face* face )
+bool PolyMesh::convertFacesToGeometry( FaceList faces, osg::Geometry* geom )
 {
-    unsigned int size = face->_pts.size();
+    if ( !faces.size() || !geom ) return false;
+
+    osg::ref_ptr<osg::DrawElementsUInt> indices = new osg::DrawElementsUInt( osg::PrimitiveSet::TRIANGLES, 0 );
+
+    unsigned int i, index=0, firstIndex=0, lastIndex=0;
+    for ( FaceList::iterator itr=faces.begin();
+        itr!=faces.end();
+        ++itr )
+    {
+        Face f = *(*itr);
+        unsigned int size=f._pts.size();
+        for ( i=0; i<size; ++i )
+        {
+            if ( i>2 )
+            {
+                indices->push_back( firstIndex );
+                indices->push_back( lastIndex );
+            }
+
+            indices->push_back( f(i) );
+
+            if ( !i ) firstIndex = indices->back();
+            lastIndex = indices->back();
+        }
+    }
+
+    geom->removePrimitiveSet( 0, geom->getPrimitiveSetList().size() );
+    geom->addPrimitiveSet( indices.get() );
+    NormalVisitor::buildNormal( *geom );
+    geom->dirtyDisplayList();
+    return true;
+}
+
+void PolyMesh::buildEdges( Face* f, EdgeMap& emap )
+{
+    unsigned int size = f->_pts.size();
     for ( unsigned int i=0; i<size; ++i )
     {
-        int p1=(*face)[i%size], p2=(*face)[(i+1)%size];
+        osg::Vec3 p1=(*f)[i%size], p2=(*f)[(i+1)%size];
         PolyMesh::Segment p( p1, p2 );
-        if ( p1>p2 )
+        if ( p2<p1 )
         {
             p.first = p2;
             p.second = p1;
         }
 
-        if ( _edges.find(p)==_edges.end() )
-            _edges[p] = new PolyMesh::Edge( p.first, p.second );
-        _edges[p]->hasFace( face, true );
+        if ( emap.find(p)==emap.end() )
+            emap[p] = new PolyMesh::Edge( p.first, p.second );
+        emap[p]->hasFace( f, true );
     }
 }

@@ -15,11 +15,18 @@
 * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
+#include <iostream>
 #include <algorithm>
 #include <osgModeling/Utilities>
 #include <osgModeling/Subdivision>
 
 using namespace osgModeling;
+
+void Subdivision::operator()( PolyMesh* mesh )
+{
+    subdivide( mesh );
+    PolyMesh::convertFacesToGeometry( mesh->_faces, mesh );
+}
 
 LoopSubdivision::LoopSubdivision():
     Subdivision()
@@ -35,77 +42,113 @@ LoopSubdivision::~LoopSubdivision()
 {
 }
 
-void LoopSubdivision::operator()( PolyMesh* mesh )
+void LoopSubdivision::subdivide( PolyMesh* mesh )
 {
-    /*if ( !mesh ) return;
+    if ( !mesh || !mesh->_faces.size() ) return;
 
     PolyMesh::MeshType type = mesh->getType();
     if ( type==PolyMesh::INVALID_MESH || type==PolyMesh::NONMANIFOLD_MESH )
         return;
 
     osg::Vec3Array* vertices = dynamic_cast<osg::Vec3Array*>( mesh->getVertexArray() );
-    osg::Vec3Array* normals = dynamic_cast<osg::Vec3Array*>( mesh->getNormalArray() );
+    if ( !vertices || !vertices->size() ) return;
+    unsigned int ptNum = vertices->size();
 
-    PolyMesh::VertexList subdividedVectices;
-    for ( PolyMesh::VertexList::iterator itr=mesh->_vertices.begin();
-        itr!=mesh->_vertices.end();
-        ++itr )
-    {
-        PolyMesh::Vertex* vec = *itr;
-        osg::Vec3 currValue = (*vertices)[vec->get()];
+    // Split edges to build subdivision points
+    subdivideFace( mesh, mesh->_faces.front(), vertices );
 
-        osg::Vec3 allNeighborValue = osg::Vec3( 0.0f, 0.0f, 0.0f );
-        unsigned int neighborCount = vec->_edges.size();
-        double beta = 0.1875f;
-        if ( neighborCount>3 ) beta = 0.375f / (double)vec->_edges.size();
+    // Reset current vertices to build subdivision points
+    subdivideVertices( mesh, vertices, ptNum );
 
-        // Calculate new vertex and new edge points
-        PolyMesh::VertexList neighbors;
-        for ( PolyMesh::EdgeList::iterator itr=vec->_edges.begin(); itr!=vec->_edges.end(); ++itr )
-        {
-            PolyMesh::Edge* edge = *itr;
-            if ( (*edge)[0]==vec->get() ) neighbors.push_back( edge->_v[1] );
-            else neighbors.push_back( edge->_v[0] );
-            osg::Vec3 currEdgePointValue = (*vertices)[ neighbors.back()->get() ];
-            allNeighborValue += currEdgePointValue;
-        }
-
-        // Push new vertex into vertex array
-        (*vertices)[vec->get()] = currValue * (1-neighborCount*beta) + allNeighborValue * beta;
-
-        subdividedVectices.push_back( vec );
-    }*/
+    mesh->destroyMesh();
+    mesh->_edges.swap( _tempEdges );
+    mesh->_faces.swap( _tempFaces );
+    _edgeVertices.clear();
+    _tempEdges.clear();
+    _tempFaces.clear();
 }
 
-void LoopSubdivision::subdivideFace( PolyMesh::Face* f, osg::Vec3Array* pts )
+void LoopSubdivision::subdivideVertices( PolyMesh* mesh, osg::Vec3Array* pts, unsigned int ptNum )
 {
-/*    for ( PolyMesh::EdgeList::iterator itr=f->_edges.begin(); itr!=f->_edges.end(); ++itr )
+    for ( unsigned int i=0; i<ptNum; ++i )
+    {
+        PolyMesh::VertexList vlist;
+        osg::Vec3 vec = (*pts)[i];
+        mesh->findNeighbors( vec, vlist );
+
+        unsigned int size = vlist.size();
+        if ( size>2 )
+        {
+            osg::Vec3 summaryVec( 0.0f, 0.0f, 0.0f );
+            for ( PolyMesh::VertexList::iterator itr=vlist.begin(); itr!=vlist.end(); ++itr )
+                summaryVec += *itr;
+
+            double beta = (size==3)?0.1875f:(0.375f/size);
+            (*pts)[i] = vec*(1-size*beta) + summaryVec*beta;
+        }
+        else if ( size==2 )
+        {
+            (*pts)[i] = vec*0.75f + (vlist[0]+vlist[1])*0.125f;
+        }
+    }
+}
+
+void LoopSubdivision::subdivideFace( PolyMesh* mesh, PolyMesh::Face* f, osg::Vec3Array* pts )
+{
+    if ( !f || f->_flag ) return;
+
+    int evIndex[3] = {0}; // Only for triangles
+    osg::Vec3 edgeVertex[3];
+    PolyMesh::EdgeList edges;
+    PolyMesh::EdgeList::iterator itr;
+    mesh->findEdgeList( f, edges );
+
+    int i=0;
+    for ( itr=edges.begin(); itr!=edges.end(), i<3; ++i, ++itr )
     {
         PolyMesh::Edge* edge = *itr;
-        PolyMesh::Vertex* newPt=NULL;
-        if ( _edgePointMap.find(edge)!=_edgePointMap.end() )
-            newPt = _edgePointMap[edge];
+        if ( _edgeVertices.find(edge)!=_edgeVertices.end() )
+        {
+            evIndex[i] = _edgeVertices[edge];
+            edgeVertex[i] = pts->at( evIndex[i] );
+        }
         else
         {
-            // Calculate a new edge point and add it to the vertex array
-            PolyMesh::VertexList vlist;
-            for ( PolyMesh::FaceList::iterator fitr=edge->_faces.begin(); fitr!=edge->_faces.end(); ++fitr )
+            PolyMesh::FaceList fl = edge->_faces;
+            if ( fl.size()<2 )
             {
-                PolyMesh::Vertex* v = *(*fitr) - edge;
-                vlist.push_back( v );
-            }
-            if ( vlist.size()>1 )
-            {
-                pts->push_back(
-                    (pts->at((*edge)[0]) + pts->at((*edge)[1])) * 0.375
-                    + (pts->at(vlist[0]->get()) + pts->at(vlist[1]->get())) * 0.125 );
+                // Boundary edges
+                edgeVertex[i] = (*edge)[0]*0.5f + (*edge)[1]*0.5f;
             }
             else
             {
-                pts->push_back( (pts->at((*edge)[0]) + pts->at((*edge)[1])) * 0.5 );
+                // Interior edges
+                osg::Vec3 v1=*(fl[0])-(*edge), v2=*(fl[1])-(*edge);
+                edgeVertex[i] = ((*edge)[0]+(*edge)[1])*0.375f + (v1+v2)*0.125f;
             }
-            newPt = new PolyMesh::Vertex( pts->size()-1 );
-            _edgePointMap[edge] = newPt;
+
+            pts->push_back( edgeVertex[i] );
+            evIndex[i] = pts->size()-1;
+            _edgeVertices[edge] = evIndex[i];
         }
-    }*/
+    }
+
+    // Construct new edges and triangles
+    PolyMesh::Face* newFace[4];
+    newFace[0] = new PolyMesh::Face( f->_array, (*f)(0), evIndex[0], evIndex[2] );
+    newFace[1] = new PolyMesh::Face( f->_array, (*f)(1), evIndex[1], evIndex[0] );
+    newFace[2] = new PolyMesh::Face( f->_array, (*f)(2), evIndex[2], evIndex[1] );
+    newFace[3] = new PolyMesh::Face( f->_array, evIndex[0], evIndex[1], evIndex[2] );
+    for ( i=0; i<4; ++i )
+    {
+        PolyMesh::buildEdges( newFace[i], _tempEdges );
+        _tempFaces.push_back( newFace[i] );
+    }
+
+    // Traverse to neighbor faces
+    f->_flag = 1;   // Sign this face as 'visited'
+    PolyMesh::FaceList flist;
+    mesh->findNeighbors( f, flist );
+    for ( PolyMesh::FaceList::iterator fitr=flist.begin(); fitr!=flist.end(); ++fitr )
+        subdivideFace( mesh, *fitr, pts );
 }
