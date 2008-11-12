@@ -22,6 +22,7 @@
 #include <osgDB/ReadFile>
 #include <osgViewer/Viewer>
 
+#include <osgModeling/Utilities>
 #include <osgModeling/Extrude>
 #include <osgModeling/Subdivision>
 
@@ -35,6 +36,7 @@ osg::ref_ptr<osg::Geometry> createGeometry()
     osg::ref_ptr<osgModeling::Curve> profile = new osgModeling::Curve;
     profile->setPath( ptArray.get() );
     osg::ref_ptr<osgModeling::Extrude> geom = new osgModeling::Extrude;
+    geom->setGenerateParts( osgModeling::Model::ALL_PARTS );
     geom->setExtrudeDirection( osg::Vec3(0.0f, 0.0f, -1.0f) );
     geom->setExtrudeLength( 2.0f );
     geom->setProfile( profile.get() );
@@ -46,19 +48,23 @@ osg::ref_ptr<osg::Geometry> createGeometry()
 osg::ref_ptr<osg::Geode> createSubd()
 {
     osg::ref_ptr<osgModeling::PolyMesh> mesh = new osgModeling::PolyMesh( *createGeometry() );
+    mesh->subdivide( new osgModeling::LoopSubdivision );
     for ( osgModeling::PolyMesh::FaceList::iterator fitr=mesh->_faces.begin();
         fitr!=mesh->_faces.end();
         ++fitr )
     {
-        printf( "Face %d\n", (*fitr)->_pts.size() );
+        PRINT_VEC3( "A", (*(*fitr))[0] );
+        PRINT_VEC3( "B", (*(*fitr))[1] );
+        PRINT_VEC3( "C", (*(*fitr))[2] );
+        std::cout << std::endl;
     }
-    for ( osgModeling::PolyMesh::EdgeMap::iterator itr=mesh->_edges.begin();
+
+    /*for ( osgModeling::PolyMesh::EdgeMap::iterator itr=mesh->_edges.begin();
         itr!=mesh->_edges.end();
         ++itr )
     {
         osgModeling::PolyMesh::Edge* e = itr->second;
-        printf( "Edge %d=>%d (%d)\n", (*e)[0], (*e)[1], e->_faces.size() );
-    }
+    }*/
 
     osg::ref_ptr<osg::Geode> geode = new osg::Geode;
     geode->addDrawable( mesh.get() );
