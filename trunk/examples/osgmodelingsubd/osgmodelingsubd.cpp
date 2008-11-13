@@ -45,11 +45,13 @@ osg::ref_ptr<osg::Geometry> createGeometry()
     return geom;
 }
 
-osg::ref_ptr<osg::Geode> createSubd()
+osg::ref_ptr<osg::Geode> createSubd( osg::Drawable* drawable )
 {
-    osg::ref_ptr<osgModeling::PolyMesh> mesh = new osgModeling::PolyMesh( *createGeometry() );
-    mesh->subdivide( new osgModeling::LoopSubdivision );
-    for ( osgModeling::PolyMesh::FaceList::iterator fitr=mesh->_faces.begin();
+    osg::Geometry* geom = dynamic_cast<osg::Geometry*>( drawable );
+    osg::ref_ptr<osgModeling::PolyMesh> mesh = new osgModeling::PolyMesh( *geom );
+    mesh->subdivide( new osgModeling::Sqrt3Subdivision(2) );
+
+    /*for ( osgModeling::PolyMesh::FaceList::iterator fitr=mesh->_faces.begin();
         fitr!=mesh->_faces.end();
         ++fitr )
     {
@@ -57,7 +59,7 @@ osg::ref_ptr<osg::Geode> createSubd()
         PRINT_VEC3( "B", (*(*fitr))[1] );
         PRINT_VEC3( "C", (*(*fitr))[2] );
         std::cout << std::endl;
-    }
+    }*/
 
     /*for ( osgModeling::PolyMesh::EdgeMap::iterator itr=mesh->_edges.begin();
         itr!=mesh->_edges.end();
@@ -73,7 +75,10 @@ osg::ref_ptr<osg::Geode> createSubd()
 
 int main( int argc, char** argv )
 {
+    osg::ref_ptr<osg::Group> subdNode = dynamic_cast<osg::Group*>( osgDB::readNodeFile("./pawn.osg") );
+    osg::Geode* subdGeode = dynamic_cast<osg::Geode*>( subdNode->getChild(0) );
+
     osgViewer::Viewer viewer;
-    viewer.setSceneData( createSubd().get() );
+    viewer.setSceneData( createSubd( subdGeode->getDrawable(0) ).get() );
     return viewer.run();
 }
