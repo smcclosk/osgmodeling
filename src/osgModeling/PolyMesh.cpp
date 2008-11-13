@@ -71,12 +71,23 @@ PolyMesh::Face::Face( osg::Vec3Array* array, PolyMesh::VertexIndexList pts, int 
     _pts.insert( _pts.end(), pts.begin(), pts.end() );
 }
 
+int PolyMesh::Face::operator()( osg::Vec3 v )
+{
+    for ( unsigned int i=0; i<_pts.size(); ++i )
+    {
+        if ( equivalent(v,(*_array)[_pts[i]]) )
+            return _pts[i];
+    }
+    return -1;
+}
+
 osg::Vec3 PolyMesh::Face::operator-( PolyMesh::Edge e )
 {
     for ( PolyMesh::VertexIndexList::iterator itr=_pts.begin(); itr!=_pts.end(); ++itr )
     {
         osg::Vec3 v = (*_array)[*itr];
-        if ( v!=e[0] && v!=e[1] ) return v;
+        if ( !equivalent(v,e[0]) && !equivalent(v,e[1]) )
+            return v;
     }
     return osg::Vec3(0.0f,0.0f,0.0f);
 }
@@ -145,25 +156,39 @@ void PolyMesh::subdivide( Subdivision* subd )
     (*subd)( this );
 }
 
-PolyMesh::Edge* PolyMesh::getEdge( osg::Vec3 p1, osg::Vec3 p2 )
+PolyMesh::Segment PolyMesh::getSegment( osg::Vec3 p1, osg::Vec3 p2 )
 {
-    Segment p( p1, p2 );
-    if ( p2<p1 )
-    {
-        p.first = p2;
-        p.second = p1;
-    }
+    if ( p2<p1 ) return Segment( p2, p1 );
+    else return Segment( p1, p2 );
+}
 
-    if ( _edges.find(p)==_edges.end() ) return NULL;
-    else return _edges[p];
+PolyMesh::Edge* PolyMesh::getEdge( osg::Vec3 p1, osg::Vec3 p2, EdgeMap& emap )
+{
+    Segment p = getSegment(p1,p2);
+    if ( emap.find(p)==emap.end() ) return NULL;
+    else return emap[p];
 }
 
 void PolyMesh::findEdgeList( osg::Vec3 p, EdgeList& elist )
 {
     for ( EdgeMap::iterator itr=_edges.begin(); itr!=_edges.end(); ++itr )
     {
-        if ( itr->first.first==p || itr->first.second==p )
+        if ( equivalent(itr->first.first,p) || equivalent(itr->first.second,p) )
             elist.push_back( itr->second );
+    }
+}
+
+void PolyMesh::findEdgeList( Edge* e, EdgeList& elist0, EdgeList& elist1 )
+{
+    osg::Vec3 v0=(*e)[0], v1=(*e)[1];
+    for ( EdgeMap::iterator itr=_edges.begin(); itr!=_edges.end(); ++itr )
+    {
+        if ( e==itr->second ) continue;
+
+        if ( equivalent(itr->first.first,v0) || equivalent(itr->first.second,v0) )
+            elist0.push_back( itr->second );
+        else if ( equivalent(itr->first.first,v1) || equivalent(itr->first.second,v1) )
+            elist1.push_back( itr->second );
     }
 }
 
@@ -172,7 +197,7 @@ void PolyMesh::findEdgeList( Face* f, EdgeList& elist )
     unsigned int size = f->_pts.size();
     for ( unsigned int i=0; i<size; ++i )
     {
-        Edge* edge = getEdge( (*f)[i%size], (*f)[(i+1)%size] );
+        Edge* edge = getEdge( (*f)[i%size], (*f)[(i+1)%size], _edges );
         if ( edge ) elist.push_back( edge );
     }
 }
@@ -193,7 +218,7 @@ void PolyMesh::findNeighbors( Face* f, FaceList& flist )
     unsigned int size = f->_pts.size();
     for ( unsigned int i=0; i<size; ++i )
     {
-        Edge* edge = getEdge( (*f)[i%size], (*f)[(i+1)%size] );
+        Edge* edge = getEdge( (*f)[i%size], (*f)[(i+1)%size], _edges );
         if ( !edge ) continue;
         
         for ( FaceList::iterator itr=edge->_faces.begin();
@@ -241,19 +266,76 @@ bool PolyMesh::convertFacesToGeometry( FaceList faces, osg::Geometry* geom )
     return true;
 }
 
-void PolyMesh::buildEdges( Face* f, EdgeMap& emap )
+PolyMesh::Edge* PolyMesh::spinEdge( EdgeMap::iterator& emap_itr, EdgeMap& emap )
 {
+    PolyMesh::Edge* e = emap_itr->second;
+    if ( !e || e->getType()!=MANIFOLD_EDGE ) return NULL;
+
+    // Find the edge in the map and redefine related element
+    Face *f1=e->_faces[0], *f2=e->_faces[1];
+    osg::Vec3 p1=*f1-(*e), p2=*f2-(*e);
+    PolyMesh::Segment p = getSegment( p1, p2 );
+
+    // Reset the edge
+    (*e)[0] = p.first;
+    (*e)[1] = p.second;
+    emap_itr = emap.erase( emap_itr );
+    emap[p] = e;
+
+    // Remove current 2 triangles from their neighbor edges' list
+    unsigned int i;
+    FaceList::iterator fitr;
+    for ( i=0; i<3; ++i )
+    {
+        Edge* e1 = getEdge( (*f1)[i], (*f1)[(i+1)%3], emap );
+        if ( e1 )
+        {
+            fitr = std::find( e1->_faces.begin(), e1->_faces.end(), f1 );
+            if ( fitr!=e1->_faces.end() ) e1->_faces.erase( fitr );
+        }
+
+        Edge* e2 = getEdge( (*f2)[i], (*f2)[(i+1)%3], emap );
+        if ( e2 )
+        {
+            fitr = std::find( e2->_faces.begin(), e2->_faces.end(), f2 );
+            if ( fitr!=e2->_faces.end() ) e2->_faces.erase( fitr );
+        }
+    }
+
+    // Create new 2 triangles and rebuild their edges
+    bool f1Finished=false, f2Finished=false;
+    int i1=(*f1)(p1), i2=(*f2)(p2);
+    for ( i=0; i<3; ++i )
+    {
+        if ( !f1Finished && (*f1)(i)==i1 )
+        {
+            f1Finished = true;
+            f1->_pts[(i+1)%3] = i2;
+        }
+        if ( !f2Finished && (*f2)(i)==i2 )
+        {
+            f2Finished = true;
+            f2->_pts[(i+1)%3] = i1;
+        }
+    }
+    buildEdges( f1, f1->_array, emap );
+    buildEdges( f2, f2->_array, emap );
+    return e;
+}
+
+void PolyMesh::buildEdges( Face* f, osg::Vec3Array* refArray, EdgeMap& emap )
+{
+    osg::Vec3 p1, p2;
     unsigned int size = f->_pts.size();
     for ( unsigned int i=0; i<size; ++i )
     {
-        osg::Vec3 p1=(*f)[i%size], p2=(*f)[(i+1)%size];
-        PolyMesh::Segment p( p1, p2 );
-        if ( p2<p1 )
-        {
-            p.first = p2;
-            p.second = p1;
-        }
+        unsigned int i1=(*f)(i%size), i2=(*f)((i+1)%size);
+        if ( i1<refArray->size() ) p1 = (*refArray)[i1];
+        else p1 = (*f)[i%size];
+        if ( i2<refArray->size() ) p2 = (*refArray)[i2];
+        else p2 = (*f)[(i+1)%size];
 
+        PolyMesh::Segment p = getSegment( p1, p2 );
         if ( emap.find(p)==emap.end() )
             emap[p] = new PolyMesh::Edge( p.first, p.second );
         emap[p]->hasFace( f, true );

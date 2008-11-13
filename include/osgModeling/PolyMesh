@@ -72,8 +72,9 @@ public:
 
         Face( osg::Vec3Array* array, int p1, int p2, int p3, int f=0 );
         Face( osg::Vec3Array* array, VertexIndexList pts, int f=0 );
-        inline int operator()( unsigned int i ) { return _pts[i]; }
         inline osg::Vec3 operator[]( unsigned int i ) { return (*_array)[_pts[i]]; }
+        inline int operator()( unsigned int i ) { return _pts[i]; }
+        int operator()( osg::Vec3 v );
         osg::Vec3 operator-( Edge e );
     };
 
@@ -91,16 +92,16 @@ public:
     /** Subdivide the polymesh using specified method. */
     virtual void subdivide( Subdivision* subd );
 
-    /** Get the edge object from two points (indices). */
-    Edge* getEdge( osg::Vec3 p1, osg::Vec3 p2 );
-
-    /** Find all edges attached to a point (index). */
+    /** Find all edges attached to a point (index). Wastes time traversing all edges. */
     void findEdgeList( osg::Vec3 p, EdgeList& elist );
+
+    /** Find all edges attached to an edge. Wastes time traversing all edges. */
+    void findEdgeList( Edge* e, EdgeList& elist0, EdgeList& elist1 );
 
     /** Find all edges attached to a face. */
     void findEdgeList( Face* f, EdgeList& elist );
 
-    /** Find all points (indices) sharing edges with specified point. */
+    /** Find all points (indices) sharing edges with specified point. Wastes time traversing all edges. */
     void findNeighbors( osg::Vec3 p, VertexList& vlist );
 
     /** Find all faces sharing edges with specified face. */
@@ -109,8 +110,17 @@ public:
     /** Convert the faces to a geometry object. */
     static bool convertFacesToGeometry( FaceList faces, osg::Geometry* geom );
 
-    /** Build edges from a new created face and save to specified map. */
-    static void buildEdges( Face* f, EdgeMap& emap );
+    /** Spin a manifold edge to change the structure of 2 triangles sharing it, referring to specified map and list. */
+    static Edge* spinEdge( EdgeMap::iterator& emap_itr, EdgeMap& emap );
+
+    /** Build edges from a new created face and a reference array and save to specified map. */
+    static void buildEdges( Face* f, osg::Vec3Array* refArray, EdgeMap& emap );
+
+    /** Create segments used by the edge map */
+    inline static Segment getSegment( osg::Vec3 p1, osg::Vec3 p2 );
+
+    /** Get the edge object in specified edge map from two points. */
+    static Edge* getEdge( osg::Vec3 p1, osg::Vec3 p2, EdgeMap& emap );
 
     EdgeMap _edges;
     FaceList _faces;

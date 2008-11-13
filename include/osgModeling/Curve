@@ -18,7 +18,6 @@
 #ifndef OSGMODELING_CURVE
 #define OSGMODELING_CURVE 1
 
-#include <vector>
 #include <osg/Object>
 #include <osg/Array>
 #include <osg/BoundingBox>
