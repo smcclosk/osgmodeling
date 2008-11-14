@@ -33,7 +33,7 @@ SET(OSGMODELING_VERSION ${OSGMODELING_MAJOR_VERSION}.${OSGMODELING_MINOR_VERSION
 
 FIND_PACKAGE(OpenSceneGraph)
 
-SET(OSG_DEBUG_POSTFIX "" CACHE STRING "use postfix to link with osg with debug")
+SET(OSG_DEBUG_POSTFIX "d" CACHE STRING "use postfix to link with osg with debug")
 
 IF(WIN32)
     IF(MSVC)
@@ -60,6 +60,10 @@ INCLUDE_DIRECTORIES(include ${CMAKE_INCLUDE_PATH} ${OPENSCENEGRAPH_INCLUDE_DIR})
 LINK_DIRECTORIES(${CMAKE_LIBRARY_PATH} ${OPENSCENEGRAPH_LIB_DIR})
 
 ADD_SUBDIRECTORY(src/osgModeling)
+OPTION(BUILD_PLUGINS "Enable to build osgModeling support for .osg/.ive format" ON)
+IF(BUILD_PLUGINS)
+    ADD_SUBDIRECTORY(src/osgPlugins/osgModeling)
+ENDIF(BUILD_PLUGINS)
 OPTION(BUILD_EXAMPLES "Enable to build osgModeling Examples" ON)
 IF(BUILD_EXAMPLES)
     ADD_SUBDIRECTORY(examples/osgmodelingbasic)

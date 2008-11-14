@@ -43,8 +43,8 @@ SET(SOURCES
 )
 
 ADD_DEFINITIONS(-DOSGMODELING_LIBRARY)
-ADD_LIBRARY(osgModeling SHARED ${HEADERS} ${SOURCES})
-TARGET_LINK_LIBRARIES(osgModeling
+ADD_LIBRARY(${LIB_NAME} SHARED ${HEADERS} ${SOURCES})
+TARGET_LINK_LIBRARIES(${LIB_NAME}
     debug osg${OSG_DEBUG_POSTFIX}         optimized osg
     debug osgUtil${OSG_DEBUG_POSTFIX}     optimized osgUtil
     debug osgViewer${OSG_DEBUG_POSTFIX}   optimized osgViewer
