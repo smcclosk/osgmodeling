@@ -42,7 +42,7 @@ public:
      */
     BezierCurve( unsigned int stride, unsigned int order, double* ptr, unsigned int numPath=20 );
 
-    META_Object( osgModeling, BezierCurve )
+    META_Object( osgModeling, BezierCurve );
 
     /** Set a method to generate Bezier curve.
      * There are 2 algorithms to generate a curve at present:
@@ -110,7 +110,7 @@ public:
     BezierSurface( osg::Vec3Array* pts, unsigned int degreeU=3, unsigned int degreeV=3,
         unsigned int numPathU=10, unsigned int numPathV=10 );
 
-    META_Object( osgModeling, BezierSurface )
+    META_Object( osgModeling, BezierSurface );
 
     /** Specifies parameters like glMap2 & no need to call update(). Provided for convenience.
     * \param stride Can be 2, 3 & 4, but only Vec3 data will be created.

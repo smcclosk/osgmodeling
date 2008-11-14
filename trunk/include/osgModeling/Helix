@@ -38,7 +38,7 @@ public:
     /** Specifies parameters in constructor & no need to call update(). Provided for convenience. */
     Helix( double coils, double pitchUnit, double radius, osg::Vec3 origin, unsigned int numPath=36 );
 
-    META_Object( osgModeling, Helix )
+    META_Object( osgModeling, Helix );
 
     /** Set coils number of the helix curve. Need not to be an integer. */
     inline void setHelixCoils( double num ) { _coils=num; if (_updated) _updated=false; }

@@ -18,8 +18,6 @@
 #ifndef OSGMODELING_EXTRUDE
 #define OSGMODELING_EXTRUDE 1
 
-#include <osgModeling/Export>
-#include <osgModeling/Curve>
 #include <osgModeling/Model>
 
 namespace osgModeling {
@@ -37,7 +35,7 @@ public:
     /** Specifies parameters in constructor & no need to call update(). Provided for convenience. */
     Extrude( Curve* pts, double length, double scale, const osg::Vec3 dir );
 
-    META_Object( osgModeling, Extrude )
+    META_Object( osgModeling, Extrude );
 
     /** Specifies how far the extrusion goes. */
     inline void setExtrudeLength( double length )

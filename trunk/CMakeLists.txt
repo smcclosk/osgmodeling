@@ -18,6 +18,7 @@
 #   Wang Rui <wangray84@gmail.com>
 
 PROJECT(osgModeling)
+SET(PROJECT_NAME osgModeling)
 
 SET(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/CMakeModules/")
 CMAKE_MINIMUM_REQUIRED(VERSION 2.4.7)
@@ -32,6 +33,7 @@ SET(OSGMODELING_PATCH_VERSION 0)
 SET(OSGMODELING_VERSION ${OSGMODELING_MAJOR_VERSION}.${OSGMODELING_MINOR_VERSION}.${OSGMODELING_PATCH_VERSION})
 
 FIND_PACKAGE(OpenSceneGraph)
+FIND_PACKAGE(Doxygen)
 
 SET(OSG_DEBUG_POSTFIX "d" CACHE STRING "use postfix to link with osg with debug")
 
@@ -60,10 +62,12 @@ INCLUDE_DIRECTORIES(include ${CMAKE_INCLUDE_PATH} ${OPENSCENEGRAPH_INCLUDE_DIR})
 LINK_DIRECTORIES(${CMAKE_LIBRARY_PATH} ${OPENSCENEGRAPH_LIB_DIR})
 
 ADD_SUBDIRECTORY(src/osgModeling)
+
 OPTION(BUILD_PLUGINS "Enable to build osgModeling support for .osg/.ive format" ON)
 IF(BUILD_PLUGINS)
     ADD_SUBDIRECTORY(src/osgPlugins/osgModeling)
 ENDIF(BUILD_PLUGINS)
+
 OPTION(BUILD_EXAMPLES "Enable to build osgModeling Examples" ON)
 IF(BUILD_EXAMPLES)
     ADD_SUBDIRECTORY(examples/osgmodelingbasic)
@@ -73,6 +77,34 @@ IF(BUILD_EXAMPLES)
     ADD_SUBDIRECTORY(examples/osgmodelingsubd)
     ADD_SUBDIRECTORY(data)
 ENDIF(BUILD_EXAMPLES)
+
+OPTION(BUILD_DOCUMENTATION "Build osgModeling documentation" OFF)
+IF(BUILD_DOCUMENTATION)
+    OPTION(BUILD_HTMLHELP "Also build HTML help file (.chm)" OFF)
+    IF(BUILD_HTMLHELP)
+        SET(GENERATE_HTMLHELP YES)
+        
+        FIND_PROGRAM(HHC_FILE hhc.exe
+          PATHS
+          $ENV{PATH}
+        )
+    ELSE(BUILD_HTMLHELP)
+        SET(GENERATE_HTMLHELP NO)
+    ENDIF(BUILD_HTMLHELP)
+
+    IF(DOT)
+        SET(HAVE_DOT YES)
+    ELSE(DOT)
+        SET(HAVE_DOT NO)
+    ENDIF(DOT)
+    
+    CONFIGURE_FILE(${PROJECT_SOURCE_DIR}/doc/Doxyfiles/doxyfile.cmake
+        ${PROJECT_BINARY_DIR}/doc/doxyfile
+    )
+    ADD_CUSTOM_TARGET(DoxygenDoc ${DOXYGEN}
+        ${PROJECT_BINARY_DIR}/doc/doxyfile
+    )
+ENDIF(BUILD_DOCUMENTATION)
 
 CONFIGURE_FILE(
   "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules/cmake_uninstall.cmake.in"
