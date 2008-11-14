@@ -18,8 +18,6 @@
 #ifndef OSGMODELING_LATHE
 #define OSGMODELING_LATHE 1
 
-#include <osgModeling/Export>
-#include <osgModeling/Curve>
 #include <osgModeling/Model>
 
 namespace osgModeling {
@@ -37,7 +35,7 @@ public:
     /** Specifies parameters in constructor & no need to call update(). Provided for convenience. */
     Lathe( Curve* pts, unsigned int segments, double angle, const osg::Vec3 origin, const osg::Vec3 axis );
 
-    META_Object( osgModeling, Lathe )
+    META_Object( osgModeling, Lathe );
 
     /** Specifies angle range to revolve. Positive value means the model has outer normals. Default is 2pi. */
     inline void setLatheRadian( double radian )

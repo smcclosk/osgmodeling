@@ -21,7 +21,6 @@
 #include <osg/NodeVisitor>
 #include <osg/Geode>
 #include <osg/Geometry>
-#include <osgModeling/Export>
 #include <osgModeling/Curve>
 
 namespace osgModeling {

@@ -58,7 +58,7 @@ class OSGMODELING_EXPORT LoopSubdivision : public Subdivision
 public:
     LoopSubdivision( int level=1 );
     LoopSubdivision( const LoopSubdivision& copy, const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY );
-    META_Object( osgModeling, LoopSubdivision )
+    META_Object( osgModeling, LoopSubdivision );
 
     virtual void subdivide( PolyMesh* mesh );
 
@@ -77,7 +77,7 @@ class OSGMODELING_EXPORT Sqrt3Subdivision : public Subdivision
 public:
     Sqrt3Subdivision( int level=1 );
     Sqrt3Subdivision( const Sqrt3Subdivision& copy, const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY );
-    META_Object( osgModeling, Sqrt3Subdivision )
+    META_Object( osgModeling, Sqrt3Subdivision );
 
     virtual void subdivide( PolyMesh* mesh );
 

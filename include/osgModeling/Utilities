@@ -19,6 +19,7 @@
 #define OSGMODELING_UTILITIES 1
 
 #include <iostream>
+#include <algorithm>
 #include <osg/io_utils>
 #include <osg/Notify>
 #include <osg/Array>

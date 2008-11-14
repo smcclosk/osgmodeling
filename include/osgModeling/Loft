@@ -18,9 +18,6 @@
 #ifndef OSGMODELING_LOFT
 #define OSGMODELING_LOFT 1
 
-#include <osg/MixinVector>
-#include <osgModeling/Export>
-#include <osgModeling/Curve>
 #include <osgModeling/Model>
 
 namespace osgModeling {
@@ -41,7 +38,7 @@ public:
     /** Specifies parameters in constructor & no need to call update(). Provided for convenience. */
     Loft( Curve* pts, Curve* section );
 
-    META_Object( osgModeling, Loft )
+    META_Object( osgModeling, Loft );
 
     /** Specifies a vertex list as path of the lofting model. */
     inline void setProfile( Curve* pts ) { _profile=pts; if (_updated) _updated=false; }

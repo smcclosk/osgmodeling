@@ -60,7 +60,7 @@ public:
     {
     }
 
-    META_Object( osgModeling, Model )
+    META_Object( osgModeling, Model );
 
     /** Set which part of the model should be generated. Use 'OR' operation to select from enum GenerateParts. */
     inline void setGenerateParts( int gp=ALL_PARTS )
