@@ -58,7 +58,7 @@ bool PolyMesh::Edge::hasFace( PolyMesh::Face* f, bool addIfNotFound )
 }
 
 PolyMesh::Face::Face( osg::Vec3Array* array, int p1, int p2, int p3, int f ):
-    _array(array), _flag(f)
+    _flag(f), _array(array)
 {
     _pts.push_back( p1 );
     _pts.push_back( p2 );
@@ -66,7 +66,7 @@ PolyMesh::Face::Face( osg::Vec3Array* array, int p1, int p2, int p3, int f ):
 }
 
 PolyMesh::Face::Face( osg::Vec3Array* array, PolyMesh::VertexIndexList pts, int f ):
-    _array(array), _flag(f)
+    _flag(f), _array(array)
 {
     _pts.insert( _pts.end(), pts.begin(), pts.end() );
 }
@@ -135,7 +135,9 @@ void PolyMesh::destroyMesh()
         else
         {
             delete itr->second; itr->second = 0;
-            itr = _edges.erase( itr );
+            EdgeMap::iterator op_itr = itr;
+            itr++;
+            itr = _edges.erase( op_itr );
         }
     }
 
@@ -279,7 +281,9 @@ PolyMesh::Edge* PolyMesh::spinEdge( EdgeMap::iterator& emap_itr, EdgeMap& emap )
     // Reset the edge
     (*e)[0] = p.first;
     (*e)[1] = p.second;
-    emap_itr = emap.erase( emap_itr );
+    EdgeMap::iterator op_itr = emap_itr;
+    emap_itr++;
+    emap.erase( op_itr );
     emap[p] = e;
 
     // Remove current 2 triangles from their neighbor edges' list

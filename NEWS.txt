@@ -1,3 +1,11 @@
+2008-11-16 osgModeling 0.1.1 Released
+
+  * New polygon mesh generator to convert any geometries to vertices-edges-faces list.
+  * New subdivision classes to support Loop and Sqrt(3) methods to subdivide polygon meshes.
+  * New normal generator to generate normal arrays using different mean weights (MWE, MWA, MWSELR, MWAAT, MWELR, MWRELR).
+  * New osgdb_osgmodeling plugin for read/write osgModeling objects in .osg files. Only a framework at present.
+  * Support for creating the document and .chm help file based on doxygen.
+
 2008-11-4 osgModeling 0.1.0 Released
 
   * Support for 4 kinds of curves: k-degree Bezier, k-degree NURBS, helix (3-dimensional spiral curves resembling a spring.) and user customized curves. 
