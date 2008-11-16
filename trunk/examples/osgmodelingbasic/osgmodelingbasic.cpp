@@ -16,7 +16,6 @@
 */
 
 #include <osg/Geode>
-#include <osg/TexGenNode>
 #include <osg/Texture2D>
 #include <osg/PositionAttitudeTransform>
 #include <osgDB/ReadFile>

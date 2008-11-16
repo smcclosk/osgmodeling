@@ -1,4 +1,4 @@
-/* -*-c++-*- osgModeling Example: Basic modeling tools
+/* -*-c++-*- osgModeling Example: Boolean operating tools
 *
 * This library is free software; you can redistribute it and/or
 * modify it under the terms of the GNU Lesser General Public
@@ -16,7 +16,6 @@
 */
 
 #include <osg/Geode>
-#include <osg/Texture2D>
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 #include <osgViewer/Viewer>
