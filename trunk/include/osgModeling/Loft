@@ -30,7 +30,7 @@ namespace osgModeling {
 class OSGMODELING_EXPORT Loft : public Model
 {
 public:
-    typedef osg::MixinVector< osg::ref_ptr<Curve> > Shapes;
+    typedef VECTOR< osg::ref_ptr<Curve> > Shapes;
 
     Loft();
     Loft( const Loft& copy, const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY );
