@@ -123,7 +123,7 @@ int main( int argc, char** argv )
     root->addChild( createBoolean().get() );
 
     osgViewer::Viewer viewer;
-    viewer.setSceneData( root );
+    viewer.setSceneData( root.get() );
     viewer.run();
 
     // You could save the geometry data to a file and review/modify it later. And this might be the main reason to have a

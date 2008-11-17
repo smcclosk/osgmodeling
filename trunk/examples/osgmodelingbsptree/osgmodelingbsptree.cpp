@@ -132,6 +132,6 @@ int main( int argc, char** argv )
     root->accept( bspVisitor );
 
     osgViewer::Viewer viewer;
-    viewer.setSceneData( root );
+    viewer.setSceneData( root.get() );
     return viewer.run();
 }

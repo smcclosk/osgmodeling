@@ -106,13 +106,13 @@ void NurbsSurface::updateImplementation()
     if ( !_knotsU || _knotsU->size()<=_degreeU+1 )
     {
         osg::notify(osg::WARN) << "osgModeling: No enough knots to create U direction of a NURBS surface, need at least "
-            << _degreeU+2 << " but only " << (_knotsU?_knotsU->size():0) << " found." << std::endl;
+            << _degreeU+2 << " but only " << (_knotsU.valid()?_knotsU->size():0) << " found." << std::endl;
         return;
     }
     if ( !_knotsV || _knotsV->size()<=_degreeV+1 )
     {
         osg::notify(osg::WARN) << "osgModeling: No enough knots to create V direction of a NURBS surface, need at least "
-            << _degreeV+2 << " but only " << (_knotsV?_knotsV->size():0) << " found." << std::endl;
+            << _degreeV+2 << " but only " << (_knotsV.valid()?_knotsV->size():0) << " found." << std::endl;
         return;
     }
 

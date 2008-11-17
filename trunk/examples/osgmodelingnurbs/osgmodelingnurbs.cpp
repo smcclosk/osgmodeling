@@ -301,6 +301,6 @@ int main( int argc, char** argv )
     root->addChild( sphere.get() );
 
     osgViewer::Viewer viewer;
-    viewer.setSceneData( root );
+    viewer.setSceneData( root.get() );
     return viewer.run();
 }
