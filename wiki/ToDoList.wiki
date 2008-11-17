@@ -1,5 +1,5 @@
 #summary Todo List
-#labels Featured,Phase-Support
+#labels Phase-Support
 
 = Todo List for osgModeling 0.2.0 =
 
