@@ -1,4 +1,4 @@
-#summary osgModeling 0.1.0 Released.
+#summary osgModeling 0.1.1 Released.
 
 = New release =
 
