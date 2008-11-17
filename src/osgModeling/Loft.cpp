@@ -177,7 +177,7 @@ void Loft::updateImplementation()
     }
 
     // Rebuild all the shapes prepared for model sections.
-    processSections( _profile, _shapes );
+    processSections( _profile.get(), _shapes );
     if ( _shapes.size()>_profile->getPath()->size() )
     {
         osg::notify(osg::WARN) << "osgModeling: Loft object has " << _shapes.size() << " sections now."

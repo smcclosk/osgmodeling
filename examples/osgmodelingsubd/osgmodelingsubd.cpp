@@ -61,7 +61,7 @@ osg::ref_ptr<osg::Geode> createSubd( osg::Drawable* drawable, int method, int le
     std::cout << "*** Start subdividing using " << methodName << ", level " << level << " ... Please wait with patient." << std::endl;
     t1 = osg::Timer::instance()->tick();
 
-    mesh->subdivide( subd );
+    mesh->subdivide( subd.get() );
 
     // A triangle strip generator should be used here, otherwise too many independent triangles may cause the graphics system crash.
     osgUtil::TriStripVisitor tsv;

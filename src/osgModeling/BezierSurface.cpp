@@ -71,7 +71,7 @@ BezierSurface::~BezierSurface()
 
 void BezierSurface::updateImplementation()
 {
-    if ( !_ctrlPts ) return;
+    if ( !_ctrlPts.valid() ) return;
 
     unsigned int numCtrl = _ctrlPts->size();
     if ( !_numPathU || !_numPathV )

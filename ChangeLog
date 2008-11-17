@@ -1,4 +1,4 @@
-2008-11-17 Wang Rui (r14)
+2008-11-17 Wang Rui (r14, r20)
 
   * Fix compatibility problem
   * Ready to release 0.1.1
@@ -10,7 +10,7 @@
 
 2008-11-14 Wang Rui (r11, r12)
 
-  * Add new osgdb_osgmodeling project to support osgModeling in .osg/.format
+  * Add new osgdb_osgmodeling project to support osgModeling in .osg format
   * Add new low-res polygon models data for testing subdivision
   * Modify CMakeLists.txt to support generating doxygen documentation
 
