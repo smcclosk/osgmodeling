@@ -19,7 +19,6 @@
 #define OSGMODELING_POLYMESH 1
 
 #include <osg/CopyOp>
-#include <osg/MixinVector>
 #include <osg/Geometry>
 #include <osgModeling/Export>
 
@@ -37,10 +36,10 @@ public:
     struct Face;
     typedef std::pair<osg::Vec3,osg::Vec3> Segment;
     typedef std::map<Segment, Edge*> EdgeMap;
-    typedef osg::MixinVector<osg::Vec3> VertexList;
-    typedef osg::MixinVector<int> VertexIndexList;
-    typedef osg::MixinVector<Edge*> EdgeList;
-    typedef osg::MixinVector<Face*> FaceList;
+    typedef VECTOR<osg::Vec3> VertexList;
+    typedef VECTOR<int> VertexIndexList;
+    typedef VECTOR<Edge*> EdgeList;
+    typedef VECTOR<Face*> FaceList;
 
     enum EdgeType { INVALID_EDGE=0, BORDER_EDGE, MANIFOLD_EDGE, JUNCTION_EDGE };
     enum MeshType { INVALID_MESH=0, OPEN_MESH, CLOSED_MESH, NONMANIFOLD_MESH };

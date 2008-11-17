@@ -137,7 +137,7 @@ void PolyMesh::destroyMesh()
             delete itr->second; itr->second = 0;
             EdgeMap::iterator op_itr = itr;
             itr++;
-            itr = _edges.erase( op_itr );
+            _edges.erase( op_itr );
         }
     }
 
@@ -263,6 +263,7 @@ bool PolyMesh::convertFacesToGeometry( FaceList faces, osg::Geometry* geom )
 
     geom->removePrimitiveSet( 0, geom->getPrimitiveSetList().size() );
     geom->addPrimitiveSet( indices.get() );
+    geom->setTexCoordArray( 0, NULL );	// TEMP
     NormalVisitor::buildNormal( *geom );
     geom->dirtyDisplayList();
     return true;

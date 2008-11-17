@@ -38,4 +38,14 @@ The osgModeling library.
 
 */
 
+/** Define this for compatibility. */
+#include <osg/Version>
+#if (OPENSCENEGRAPH_MAJOR_VERSION>1 && OPENSCENEGRAPH_MINOR_VERSION>6)
+    #include <osg/MixinVector>
+    #define VECTOR osg::MixinVector
+#else
+    #include <vector>
+    #define VECTOR std::vector
+#endif
+
 #endif

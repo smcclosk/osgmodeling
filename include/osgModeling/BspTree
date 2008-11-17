@@ -18,7 +18,6 @@
 #ifndef OSGMODELING_BSPTREE
 #define OSGMODELING_BSPTREE 1
 
-#include <osg/MixinVector>
 #include <osg/CopyOp>
 #include <osg/Plane>
 #include <osgModeling/Export>
@@ -32,8 +31,8 @@ class OSGMODELING_EXPORT BspTree : public osg::Object
 public:
     struct BspFace;
 
-    typedef osg::MixinVector<osg::Vec3> PointList;
-    typedef osg::MixinVector<BspFace> FaceList;
+    typedef VECTOR<osg::Vec3> PointList;
+    typedef VECTOR<BspFace> FaceList;
     enum FaceClassify { INVALID_FACE=0, CROSS_FACE, POSITIVE_FACE, NEGATIVE_FACE, COINCIDENT_FACE };
 
     struct BspFace

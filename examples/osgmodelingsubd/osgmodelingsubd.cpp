@@ -17,6 +17,7 @@
 
 #include <osg/Geode>
 #include <osgDB/ReadFile>
+#include <osgUtil/TriStripVisitor>
 #include <osgViewer/Viewer>
 
 #include <osgModeling/Utilities>
@@ -62,10 +63,15 @@ osg::ref_ptr<osg::Geode> createSubd( osg::Drawable* drawable, int method, int le
 
     mesh->subdivide( subd );
 
+    // A triangle strip generator should be used here, otherwise too many independent triangles may cause the graphics system crash.
+    osgUtil::TriStripVisitor tsv;
+    tsv.stripify( *mesh );
+
     t2 = osg::Timer::instance()->tick();
     std::cout << "- Subdividing Edges: " << mesh->_edges.size() << std::endl;
     std::cout << "- Subdividing Faces: " << mesh->_faces.size() << std::endl;
     std::cout << "- Subdividing Time Spend: " << osg::Timer::instance()->delta_s( t1, t2 ) << "s" << std::endl;
+
     return geode;
 }
 

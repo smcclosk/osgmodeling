@@ -18,6 +18,7 @@
 #include <osg/Geode>
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
+#include <osgUtil/TriStripVisitor>
 #include <osgViewer/Viewer>
 
 #include <osgModeling/Extrude>
@@ -103,6 +104,10 @@ osg::ref_ptr<osg::Node> createBoolean()
     // Be careful, it may cost long time or even crash if you input a too complex model.
     osg::ref_ptr<osg::Geometry> result = new osg::Geometry;
     boolOp->output( result.get() );
+    
+    // A triangle strip generator should be used here, otherwise too many independent triangles may cause the graphics system crash. 
+    osgUtil::TriStripVisitor tsv;
+    tsv.stripify( *result );
 
     osg::ref_ptr<osg::Geode> geode = new osg::Geode;
     geode->addDrawable( result.get() );

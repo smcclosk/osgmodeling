@@ -1,3 +1,8 @@
+2008-11-17 Wang Rui (r14)
+
+  * Fix compatibility problem
+  * Ready to release 0.1.1
+
 2008-11-16 Wang Rui (r13)
 
   * Improve the osgmodelingsubd example

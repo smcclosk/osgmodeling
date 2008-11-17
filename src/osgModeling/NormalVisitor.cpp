@@ -36,7 +36,7 @@ struct CalcNormalFunctor
     int _method;
     double _threshold;
     osg::Vec3* _normalBase;
-    osg::MixinVector<osg::Vec3> _lastNormalRecorder;
+    VECTOR<osg::Vec3> _lastNormalRecorder;
 
     void setNormalParameters( osg::Vec3* nb, bool flip, int method, double t )
     {

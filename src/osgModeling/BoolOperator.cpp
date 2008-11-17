@@ -171,6 +171,7 @@ bool BoolOperator::convertFacesToGeometry( FaceList faces, osg::Geometry* geom )
     geom->removePrimitiveSet( 0, geom->getPrimitiveSetList().size() );
     geom->addPrimitiveSet( indices.get() );
     geom->setVertexArray( vertics.get() );
+    geom->setTexCoordArray( 0, NULL );	// TEMP
     NormalVisitor::buildNormal( *geom );
     geom->dirtyDisplayList();
     return true;
