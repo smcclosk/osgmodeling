@@ -30,15 +30,44 @@
     #  define OSGMODELING_EXPORT
 #endif
 
-/**
-
-\namespace osgModeling
-
-The osgModeling library.
-
+/** @namespace osgModeling
+* The osgModeling library.
 */
 
-/** Define this for compatibility. */
+/** @defgroup examples osgModeling Examples
+* Documentations of osgModeling examples.
+* @{
+*/
+
+/** @defgroup osgmodelingbasic osgmodelingbasic
+* The basic modeling example
+* Demonstrates how to build extrusions, revolutions and lofts with osgModeling classes (Extrude, Lathe, Loft, Helix and so on).
+*/
+
+/** @defgroup osgmodelingboolean osgmodelingboolean
+* The boolean operation example
+* Demonstrates how to create a boolean object from two specified models.
+*/
+
+/** @defgroup osgmodelingbsptree osgmodelingbsptree
+* The BSP construction example
+* Demonstrates how to build BSP trees for models.
+*/
+
+/** @defgroup osgmodelingnurbs osgmodelingnurbs
+* The Bezier and NURBS example
+* Demonstrates how to create Bezier and NURBS surfaces with osgModeling classes.
+*/
+
+/** @defgroup osgmodelingsubd osgmodelingsubd
+* The subdivision example
+* Demonstrates how to subdivide models using different levels and methods (Loop or Sqrt3).
+*/
+
+/** @}
+*/
+
+/* Define this for compatibility. */
 #include <osg/Version>
 #if (OPENSCENEGRAPH_MAJOR_VERSION>1 && OPENSCENEGRAPH_MINOR_VERSION>6)
     #include <osg/MixinVector>

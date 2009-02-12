@@ -59,13 +59,13 @@ bool Loft::processSections( const Curve* path, Loft::Shapes& shapes )
         Curve* c = dynamic_cast<Curve*>( (*itr).get() );
         if ( !c || !(c->getPath()) || !(c->getPath()->size()) )
             continue;
-        
+
         // Record and calculate transitions between two defined shapes.
         if ( to==shapes.end() )
         {
             to = itr;
             buildTransitions( from, to, &(pts->at(from-shapes.begin())) );
-            
+
             from = to;
             to = shapes.end();
         }
@@ -207,7 +207,20 @@ void Loft::updateImplementation()
         osg::Vec3 newZ;
         if ( i==0 ) newZ = (*pts)[i] - (*pts)[i+1];
         else if ( i==knots-1 ) newZ = (*pts)[i-1] - (*pts)[i];
-        else newZ = (*pts)[i-1] - (*pts)[i+1];
+        else
+        {
+            // old way, newZ is perpendicular to the height of the triangle formed by
+            // (*pts)[i-1], (*pts)[i], (*pts)[i+1]
+            // newZ = (*pts)[i-1] - (*pts)[i+1];
+
+            // new way we want to use the bisectrice of the concerned triangle angle
+            osg::Vec3 oldZ = (*pts)[i-1] - (*pts)[i];
+            oldZ.normalize();
+            newZ = (*pts)[i] - (*pts)[i+1];
+            newZ.normalize();
+
+            newZ = oldZ + newZ;
+        }
         newZ.normalize();
 
         // Calculate actual position of the current section from the shape list.
@@ -229,7 +242,7 @@ void Loft::updateImplementation()
                 //    We should get the changed ('*lastArray[] - *vitr') and rotate it from XY plane to current section.
                 // 3. Alter the line vector and calculate correct intersect points ('ip') of current section.
                 v = (*pts)[i-1] - (*pts)[i];
-                v += ( (*lastArray)[pos] - (*vitr) ) * 
+                v += ( (*lastArray)[pos] - (*vitr) ) *
                     osg::Matrix::rotate( osg::Vec3(0.0f,0.0f,1.0f), newZ );
                 ip = calcIntersect( (*lastIntersects)[pos], v, osg::Plane(newZ, (*pts)[i]) );
             }
