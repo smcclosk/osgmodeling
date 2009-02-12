@@ -15,6 +15,6 @@ TARGET_LINK_LIBRARIES(${EXAMPLE_NAME}
     debug osgDB${OSG_DEBUG_POSTFIX}       optimized osgDB
     debug osgGA${OSG_DEBUG_POSTFIX}       optimized osgGA
     debug OpenThreads${OSG_DEBUG_POSTFIX} optimized OpenThreads
-    debug osgModeling${OSG_DEBUG_POSTFIX} optimized osgModeling
+    osgModeling
 )
 INSTALL(TARGETS ${EXAMPLE_NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
